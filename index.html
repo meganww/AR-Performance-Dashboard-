@@ -5,711 +5,789 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PHX6 AR Performance Dashboard</title>
 <script src="https://d1hilrkz3ka39e.cloudfront.net/plotly/plotly-2.27.0.min.js"></script>
-<script src="https://d1hilrkz3ka39e.cloudfront.net/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0f1923;--card:#1a2736;--card2:#223344;--accent:#4A90E2;--accent2:#5C7A99;--green:#2ECC71;--orange:#F39C12;--red:#E74C3C;--text:#E8EDF2;--text2:#8899AA;--border:#2a3a4a}
-body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
-.header{background:linear-gradient(135deg,#1a2736,#0f1923);border-bottom:1px solid var(--border);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-.header h1{font-size:20px;font-weight:700;color:var(--text)}
-.header h1 span{color:var(--accent)}
-.header-right{display:flex;align-items:center;gap:12px}
-.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
-.status-dot.green{background:var(--green)}
-.status-dot.red{background:var(--red)}
-.status-dot.orange{background:var(--orange)}
-.status-text{font-size:12px;color:var(--text2)}
-.tabs{display:flex;background:var(--card);border-bottom:1px solid var(--border);padding:0 16px;overflow-x:auto}
-.tab{padding:12px 20px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text2);border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s}
-.tab:hover{color:var(--text)}
-.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
-.tab-content{display:none;padding:20px}
+:root{--bg:#0f1117;--card:#1a1d27;--card2:#232733;--border:#2d3140;--text:#e2e4e9;--text2:#8b8fa3;--blue:#4a90e2;--green:#2ecc71;--orange:#f39c12;--red:#e74c3c;--purple:#9b59b6;--cyan:#00d2d3}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
+.sidebar{width:240px;background:var(--card);border-right:1px solid var(--border);padding:20px 0;position:fixed;height:100vh;overflow-y:auto;z-index:100}
+.sidebar h1{font-size:15px;padding:0 20px 5px;color:var(--blue);font-weight:700;letter-spacing:0.5px}
+.sidebar .subtitle{font-size:11px;color:var(--text2);padding:0 20px 20px;border-bottom:1px solid var(--border)}
+.nav-item{display:flex;align-items:center;padding:12px 20px;cursor:pointer;font-size:13px;color:var(--text2);transition:all 0.2s;border-left:3px solid transparent}
+.nav-item:hover{background:rgba(74,144,226,0.08);color:var(--text)}
+.nav-item.active{background:rgba(74,144,226,0.12);color:var(--blue);border-left-color:var(--blue);font-weight:600}
+.nav-item .icon{margin-right:10px;font-size:16px;width:22px;text-align:center}
+.nav-section{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text2);padding:20px 20px 8px;font-weight:600}
+.main{margin-left:240px;padding:24px;flex:1;min-height:100vh}
+.tab-content{display:none}
 .tab-content.active{display:block}
-.upload-zone{background:var(--card);border:2px dashed var(--border);border-radius:12px;padding:40px;text-align:center;margin:10px 0;cursor:pointer;transition:all .3s}
-.upload-zone:hover{border-color:var(--accent);background:var(--card2)}
-.upload-zone.dragover{border-color:var(--green);background:rgba(46,204,113,.05)}
-.upload-zone h3{color:var(--text);margin-bottom:8px;font-size:16px}
-.upload-zone p{color:var(--text2);font-size:13px}
-.upload-zone input{display:none}
-.file-status{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin:20px 0}
-.file-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;display:flex;align-items:center;gap:12px}
-.file-card .icon{width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
-.file-card .icon.loaded{background:rgba(46,204,113,.15)}
-.file-card .icon.empty{background:rgba(136,153,170,.1)}
-.file-card .info{flex:1}
-.file-card .info .name{font-size:13px;font-weight:600;color:var(--text)}
-.file-card .info .detail{font-size:11px;color:var(--text2);margin-top:2px}
-.file-card .badge{font-size:10px;padding:3px 8px;border-radius:10px;font-weight:600}
-.badge.loaded{background:rgba(46,204,113,.15);color:var(--green)}
-.badge.missing{background:rgba(136,153,170,.1);color:var(--text2)}
-.kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:20px}
-.kpi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px}
-.kpi .label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
-.kpi .value{font-size:28px;font-weight:700}
-.kpi .sub{font-size:12px;margin-top:4px}
-.kpi .value.green{color:var(--green)}
-.kpi .value.red{color:var(--red)}
-.kpi .value.orange{color:var(--orange)}
-.kpi .value.blue{color:var(--accent)}
-.chart-container{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px}
-.chart-container h3{font-size:14px;font-weight:600;margin-bottom:4px}
-.chart-container .subtitle{font-size:11px;color:var(--text2);margin-bottom:12px}
-.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-@media(max-width:900px){.chart-row{grid-template-columns:1fr}}
-.data-table{width:100%;border-collapse:collapse;font-size:12px}
-.data-table th{background:var(--card2);padding:10px 12px;text-align:left;font-weight:600;color:var(--text2);text-transform:uppercase;font-size:10px;letter-spacing:.5px;border-bottom:1px solid var(--border);position:sticky;top:0}
-.data-table td{padding:8px 12px;border-bottom:1px solid var(--border)}
-.data-table tr:hover{background:rgba(74,144,226,.05)}
-.ptp-badge{padding:2px 8px;border-radius:4px;font-weight:600;font-size:11px}
-.ptp-badge.critical{background:rgba(231,76,60,.15);color:var(--red)}
-.ptp-badge.below{background:rgba(243,156,18,.15);color:var(--orange)}
-.ptp-badge.target{background:rgba(46,204,113,.15);color:var(--green)}
-.ptp-badge.strong{background:rgba(46,204,113,.25);color:var(--green)}
-.table-scroll{max-height:500px;overflow-y:auto;border-radius:8px;border:1px solid var(--border)}
-.empty-state{text-align:center;padding:60px 20px;color:var(--text2)}
-.empty-state .icon{font-size:48px;margin-bottom:16px}
-.empty-state h3{color:var(--text);margin-bottom:8px}
-.action-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px;border-left:4px solid}
-.action-card.gate{border-left-color:var(--red)}
-.action-card.investigate{border-left-color:var(--orange)}
-.action-card.monitor{border-left-color:var(--accent)}
-.action-card.ontrack{border-left-color:var(--green)}
-.action-card .action-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-.action-card .action-title{font-weight:700;font-size:14px}
-.action-card .action-detail{font-size:12px;color:var(--text2);line-height:1.5}
-.section-title{font-size:16px;font-weight:700;margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
-.clear-btn{background:var(--red);color:white;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600}
-.clear-btn:hover{opacity:.8}
-.refresh-btn{background:var(--accent);color:white;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600}
-.refresh-btn:hover{opacity:.8}
-.plotly-chart{width:100%;min-height:350px}
-.last-updated{font-size:11px;color:var(--text2);margin-top:8px}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
+.kpi-label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text2);margin-bottom:8px}
+.kpi-value{font-size:28px;font-weight:700}
+.kpi-sub{font-size:12px;margin-top:6px}
+.kpi-up{color:var(--green)}
+.kpi-down{color:var(--red)}
+.kpi-warn{color:var(--orange)}
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px}
+.chart-card h3{font-size:15px;font-weight:600;margin-bottom:4px}
+.chart-card .desc{font-size:12px;color:var(--text2);margin-bottom:16px}
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.chart-row.three{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:1200px){.chart-row,.chart-row.three{grid-template-columns:1fr}}
+table.data-table{width:100%;border-collapse:collapse;font-size:12px}
+table.data-table th{background:var(--card2);padding:10px 12px;text-align:left;font-weight:600;color:var(--text2);text-transform:uppercase;font-size:10px;letter-spacing:0.5px;border-bottom:2px solid var(--border);position:sticky;top:0}
+table.data-table td{padding:9px 12px;border-bottom:1px solid var(--border)}
+table.data-table tr:hover{background:rgba(74,144,226,0.05)}
+.badge{display:inline-block;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.badge-green{background:rgba(46,204,113,0.15);color:var(--green)}
+.badge-yellow{background:rgba(243,156,18,0.15);color:var(--orange)}
+.badge-red{background:rgba(231,76,60,0.15);color:var(--red)}
+.badge-blue{background:rgba(74,144,226,0.15);color:var(--blue)}
+.badge-purple{background:rgba(155,89,182,0.15);color:var(--purple)}
+.section-header{font-size:18px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.section-header .icon{font-size:22px}
+.insight-box{background:rgba(74,144,226,0.08);border:1px solid rgba(74,144,226,0.2);border-radius:8px;padding:14px 18px;margin-bottom:20px;font-size:13px;line-height:1.6}
+.insight-box strong{color:var(--blue)}
+.alert-box{background:rgba(231,76,60,0.08);border:1px solid rgba(231,76,60,0.2);border-radius:8px;padding:14px 18px;margin-bottom:20px;font-size:13px;line-height:1.6}
+.alert-box strong{color:var(--red)}
+.warn-box{background:rgba(243,156,18,0.08);border:1px solid rgba(243,156,18,0.2);border-radius:8px;padding:14px 18px;margin-bottom:20px;font-size:13px;line-height:1.6}
+.warn-box strong{color:var(--orange)}
+.sql-box{background:#1e2130;border:1px solid var(--border);border-radius:8px;padding:16px;font-family:'Fira Code',monospace;font-size:11px;color:#a8b2d1;overflow-x:auto;white-space:pre;line-height:1.5;margin:12px 0}
+.sql-keyword{color:#c792ea}
+.sql-string{color:#c3e88d}
+.sql-comment{color:#546e7a}
+.collapsible{cursor:pointer;padding:12px 16px;background:var(--card2);border:1px solid var(--border);border-radius:8px;font-size:13px;font-weight:600;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.collapsible:hover{background:rgba(74,144,226,0.08)}
+.collapsible-content{display:none;padding:16px;background:var(--card);border:1px solid var(--border);border-radius:0 0 8px 8px;margin-top:-9px;margin-bottom:16px}
+.collapsible-content.open{display:block}
+.tag{display:inline-block;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:600;margin-right:4px}
+.tag-schema{background:rgba(155,89,182,0.2);color:var(--purple)}
+.tag-table{background:rgba(0,210,211,0.2);color:var(--cyan)}
+.progress-bar{height:6px;background:var(--card2);border-radius:3px;overflow:hidden;margin-top:8px}
+.progress-fill{height:100%;border-radius:3px;transition:width 1s ease}
+.waterfall-item{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)}
+.waterfall-label{width:200px;font-size:12px}
+.waterfall-bar-container{flex:1;height:24px;position:relative}
+.waterfall-bar{height:100%;border-radius:4px;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:600;color:white;min-width:40px}
 </style>
 </head>
 <body>
+<div class="sidebar">
+<h1>📊 AR PERFORMANCE</h1>
+<div class="subtitle">PHX6 • BHN Shift • WE 3/15/2026</div>
+<div class="nav-section">Dashboard</div>
+<div class="nav-item active" onclick="showTab('overview')"><span class="icon">📈</span>Program Overview</div>
+<div class="nav-item" onclick="showTab('gl')"><span class="icon">📦</span>GL Category Tracker</div>
+<div class="nav-item" onclick="showTab('associate')"><span class="icon">👥</span>Site & Associates</div>
+<div class="nav-item" onclick="showTab('divergence')"><span class="icon">⚡</span>PtP Divergence</div>
+<div class="nav-item" onclick="showTab('actions')"><span class="icon">🎯</span>Action Prioritizer</div>
+<div class="nav-section">Reference</div>
+<div class="nav-item" onclick="showTab('datasource')"><span class="icon">🗄️</span>Data Sources & SQL</div>
+</div>
 
-<div class="header">
-<h1>📊 PHX6 <span>AR Performance</span> Dashboard</h1>
-<div class="header-right">
-<span class="status-dot" id="globalStatus"></span>
-<span class="status-text" id="globalStatusText">No data loaded</span>
-<button class="refresh-btn" onclick="renderAll()">🔄 Refresh</button>
-<button class="clear-btn" onclick="clearAll()">🗑️ Clear All</button>
+<div class="main">
+
+<!-- TAB 1: PROGRAM OVERVIEW -->
+<div id="tab-overview" class="tab-content active">
+<div class="section-header"><span class="icon">📈</span>Program Overview</div>
+<div class="kpi-row">
+<div class="kpi">
+<div class="kpi-label">Yield PtP (Current)</div>
+<div class="kpi-value" style="color:var(--green)">1.0232</div>
+<div class="kpi-sub kpi-down">▼ 1.8% WoW</div>
+</div>
+<div class="kpi">
+<div class="kpi-label">AR Yield PtP ($)</div>
+<div class="kpi-value" style="color:var(--orange)">1.0207</div>
+<div class="kpi-sub kpi-down">▼ 2.1% WoW</div>
+</div>
+<div class="kpi">
+<div class="kpi-label">AR Opp COGs</div>
+<div class="kpi-value" style="color:var(--green)">+$12,024</div>
+<div class="kpi-sub kpi-down">▼ from $37,524</div>
+</div>
+<div class="kpi">
+<div class="kpi-label">12-Week Decline</div>
+<div class="kpi-value" style="color:var(--red)">-5.1%</div>
+<div class="kpi-sub kpi-warn">⚠️ Breach ~WE 4/26</div>
+</div>
+<div class="kpi">
+<div class="kpi-label">PHX6 Refurb PtP</div>
+<div class="kpi-value" style="color:var(--orange)">0.9919</div>
+<div class="kpi-sub kpi-down">Below breakeven</div>
 </div>
 </div>
 
-<div class="tabs">
-<div class="tab active" onclick="switchTab('upload')">📁 Upload Data</div>
-<div class="tab" onclick="switchTab('overview')">📈 Program Overview</div>
-<div class="tab" onclick="switchTab('gl')">🏷️ GL Categories</div>
-<div class="tab" onclick="switchTab('site')">🏭 Site & Associates</div>
-<div class="tab" onclick="switchTab('divergence')">⚖️ PtP Divergence</div>
-<div class="tab" onclick="switchTab('actions')">🎯 Action Prioritizer</div>
+<div class="alert-box">
+<strong>🚨 CRITICAL:</strong> Yield PtP has declined from 1.0778 → 1.0232 over 12 weeks. At the current rate of ~0.5%/week decline, AR will breach the 1.0 breakeven threshold by approximately <strong>WE 4/26 – 5/10</strong>.
 </div>
 
-<div class="tab-content active" id="tab-upload">
-<div class="upload-zone" id="dropZone">
-<h3>📁 Drop CSV Files Here or Click to Browse</h3>
-<p>Upload your weekly data exports — the tool auto-detects each file type</p>
-<p style="margin-top:8px;font-size:11px;color:var(--accent)">Supports: Yield PtP Performance, Weekly Associate Aggregate, Weekly Aggregate Performance, Yield PTP COGS Weekly, Yield Performance by GL, Overall Performance</p>
-<input type="file" id="fileInput" multiple accept=".csv,.xlsx,.xls">
+<div class="chart-row">
+<div class="chart-card">
+<h3>12-Week Yield PtP Trend</h3>
+<div class="desc">Weekly Yield PtP with Cost Unsellable overlay</div>
+<div id="chart-yield-trend" style="height:350px"></div>
 </div>
-<div class="file-status" id="fileStatus"></div>
-<div id="uploadLog" style="margin-top:16px"></div>
+<div class="chart-card">
+<h3>Daily AR Yield PtP (WE 3/8–3/15)</h3>
+<div class="desc">Daily performance with breakeven reference</div>
+<div id="chart-daily-ptp" style="height:350px"></div>
 </div>
-
-<div class="tab-content" id="tab-overview">
-<div id="overviewContent"><div class="empty-state"><div class="icon">📈</div><h3>Upload Data to View Program Overview</h3><p>Upload Yield PTP COGS Weekly, Overall Performance, and Yield PtP Performance CSVs</p></div></div>
 </div>
 
-<div class="tab-content" id="tab-gl">
-<div id="glContent"><div class="empty-state"><div class="icon">🏷️</div><h3>Upload Data to View GL Categories</h3><p>Upload Yield Performance by GL CSV</p></div></div>
+<div class="chart-card">
+<h3>AR vs CR Program Comparison (5-Week Trend)</h3>
+<div class="desc">Comparing AR and CR yield metrics side by side</div>
+<div style="overflow-x:auto">
+<table class="data-table">
+<thead><tr><th>Week</th><th>CR Yield PtP (Units)</th><th>CR Yield PtP ($)</th><th>CR Opp COGs</th><th>AR Yield PtP ($)</th><th>AR Opp COGs</th><th>AR Flat Yield (Units)</th><th>AR Flat Yield ($)</th></tr></thead>
+<tbody>
+<tr><td>2/15</td><td>1.1657</td><td>1.0223</td><td>$60,570</td><td style="color:var(--green)">1.0610</td><td style="color:var(--green)">$55,081</td><td>73.13%</td><td>76.02%</td></tr>
+<tr><td>2/22</td><td>1.1600</td><td>1.0163</td><td>$43,270</td><td style="color:var(--green)">1.0548</td><td style="color:var(--green)">$46,546</td><td>72.97%</td><td>74.97%</td></tr>
+<tr><td>3/1</td><td>1.1437</td><td>1.0160</td><td>$39,686</td><td style="color:var(--green)">1.0411</td><td style="color:var(--green)">$40,450</td><td>74.34%</td><td>76.11%</td></tr>
+<tr><td>3/8</td><td>1.1414</td><td>1.0139</td><td>$33,948</td><td style="color:var(--green)">1.0426</td><td style="color:var(--green)">$37,524</td><td>72.68%</td><td>75.27%</td></tr>
+<tr><td>3/15</td><td>1.1355</td><td style="color:var(--orange)">1.0071</td><td>$11,242</td><td style="color:var(--orange)">1.0207</td><td style="color:var(--orange)">$12,024</td><td style="color:var(--red)">72.22%</td><td style="color:var(--red)">73.48%</td></tr>
+</tbody>
+</table>
+</div>
+</div>
 </div>
 
-<div class="tab-content" id="tab-site">
-<div id="siteContent"><div class="empty-state"><div class="icon">🏭</div><h3>Upload Data to View Site & Associate Data</h3><p>Upload Weekly Aggregate Performance and Weekly Associate Aggregate CSVs</p></div></div>
+<!-- TAB 2: GL CATEGORY TRACKER -->
+<div id="tab-gl" class="tab-content">
+<div class="section-header"><span class="icon">📦</span>GL Category Tracker</div>
+<div class="kpi-row">
+<div class="kpi">
+<div class="kpi-label">Total GL Categories</div>
+<div class="kpi-value">35</div>
+<div class="kpi-sub">Tracked categories</div>
+</div>
+<div class="kpi">
+<div class="kpi-label">Above Breakeven</div>
+<div class="kpi-value" style="color:var(--green)">27</div>
+<div class="kpi-sub kpi-up">77% of categories</div>
+</div>
+<div class="kpi">
+<div class="kpi-label">Below Breakeven</div>
+<div class="kpi-value" style="color:var(--red)">8</div>
+<div class="kpi-sub kpi-down">~60K units at risk</div>
+</div>
+<div class="kpi">
+<div class="kpi-label">Worst Category</div>
+<div class="kpi-value" style="color:var(--red)">gl_music</div>
+<div class="kpi-sub kpi-down">0.7197 PtP</div>
+</div>
 </div>
 
-<div class="tab-content" id="tab-divergence">
-<div id="divergenceContent"><div class="empty-state"><div class="icon">⚖️</div><h3>Upload Data to View PtP Divergence Analysis</h3><p>Upload Overall Performance CSV</p></div></div>
+<div class="insight-box">
+<strong>💡 KEY INSIGHT:</strong> 8 categories representing ~60,121 units operate below breakeven. The top 3 — <strong>gl_toy (23,293 units)</strong>, <strong>gl_wireless (19,399 units)</strong>, and <strong>gl_drugstore (6,220 units)</strong> — account for 81% of below-breakeven volume.
 </div>
 
-<div class="tab-content" id="tab-actions">
-<div id="actionsContent"><div class="empty-state"><div class="icon">🎯</div><h3>Upload Data to View Action Prioritizer</h3><p>Upload all CSV files for complete analysis</p></div></div>
+<div class="chart-card">
+<h3>All GL Categories — Yield PtP Performance</h3>
+<div class="desc">Sorted by PtP • Red line = 1.0 breakeven threshold • Hover for details</div>
+<div id="chart-gl-bar" style="height:700px"></div>
 </div>
 
-<script>
-// ═══════════════════════════════════════════
-// DATA STORE
-// ═══════════════════════════════════════════
-const DATA={
-  yieldDaily:null,
-  associateWeekly:null,
-  siteWeekly:null,
-  yieldCOGS:null,
-  glPerformance:null,
-  overallPerformance:null
-};
+<div class="chart-row">
+<div class="chart-card">
+<h3>Volume vs PtP (Bubble = Units)</h3>
+<div class="desc">Categories in the bottom-right quadrant are high-volume losers</div>
+<div id="chart-gl-bubble" style="height:400px"></div>
+</div>
+<div class="chart-card">
+<h3>Top Profit Drivers vs Loss Drivers</h3>
+<div class="desc">Estimated dollar impact by category</div>
+<div id="chart-gl-impact" style="height:400px"></div>
+</div>
+</div>
 
-const FILE_TYPES=[
-  {key:'yieldDaily',name:'Yield PtP Performance (Daily)',detect:r=>r['AR Yield PtP']!==undefined&&r['Evaluation Day Lcl']!==undefined&&r['Yield PtP Aggregate for DD']!==undefined,icon:'📅'},
-  {key:'associateWeekly',name:'Weekly Associate Aggregate',detect:r=>r['Associate']!==undefined&&r['Refurb Ptp']!==undefined&&r['Success Rate']!==undefined,icon:'👤'},
-  {key:'siteWeekly',name:'Weekly Aggregate Performance',detect:r=>r['Refurb Ptp %']!==undefined&&r['Opp COGs']!==undefined&&r['Overall Success Rate']!==undefined,icon:'🏭'},
-  {key:'yieldCOGS',name:'Yield PTP & COGS Weekly',detect:r=>r['Cost Unsellable (SUM)']!==undefined&&r['Yield PtP (CUSTOM)']!==undefined,icon:'💰'},
-  {key:'glPerformance',name:'Yield Performance by GL',detect:r=>r['GL Product Group Description']!==undefined&&r['Yield PtP']!==undefined&&r['Expected Yield']!==undefined,icon:'🏷️'},
-  {key:'overallPerformance',name:'Overall Performance',detect:r=>r['Flat CR Yield (Units)']!==undefined&&r['AR Yield PtP ($)']!==undefined,icon:'📊'}
-];
+<div class="chart-card">
+<h3>Complete GL Category Detail Table</h3>
+<div class="desc">All 35 categories with performance metrics • Click column headers to sort</div>
+<div style="overflow-x:auto;max-height:500px;overflow-y:auto">
+<table class="data-table" id="gl-table">
+<thead><tr><th>Status</th><th>GL Category</th><th>Units</th><th>Actual Yield</th><th>Expected Yield</th><th>Yield PtP</th><th>Gap</th></tr></thead>
+<tbody id="gl-table-body"></tbody>
+</table>
+</div>
+</div>
+</div>
 
-// ═══════════════════════════════════════════
-// INIT — Load from localStorage
-// ═══════════════════════════════════════════
-(function init(){
-  FILE_TYPES.forEach(ft=>{
-    const saved=localStorage.getItem('arDash_'+ft.key);
-    if(saved){try{DATA[ft.key]=JSON.parse(saved)}catch(e){}}
-  });
-  updateFileStatus();
-  updateGlobalStatus();
-  renderAll();
-})();
+<!-- TAB 3: ASSOCIATE & SITE -->
+<div id="tab-associate" class="tab-content">
+<div class="section-header"><span class="icon">👥</span>PHX6 Site & Associate Performance</div>
+<div class="kpi-row">
+<div class="kpi">
+<div class="kpi-label">PHX6 Refurb PtP</div>
+<div class="kpi-value" style="color:var(--orange)">0.9919</div>
+<div class="kpi-sub kpi-down">▼ from 1.0195</div>
+</div>
+<div class="kpi">
+<div class="kpi-label">PHX6 Opp COGs</div>
+<div class="kpi-value" style="color:var(--red)">-$343</div>
+<div class="kpi-sub kpi-down">Was +$978</div>
+</div>
+<div class="kpi">
+<div class="kpi-label">Success Rate</div>
+<div class="kpi-value">75.39%</div>
+<div class="kpi-sub kpi-down">▼ from 77.31%</div>
+</div>
+<div class="kpi">
+<div class="kpi-label">HC Clean PtP</div>
+<div class="kpi-value" style="color:var(--green)">1.1078</div>
+<div class="kpi-sub kpi-up">3 weeks above 1.10</div>
+</div>
+</div>
 
-// ═══════════════════════════════════════════
-// FILE UPLOAD HANDLING
-// ═══════════════════════════════════════════
-const dropZone=document.getElementById('dropZone');
-const fileInput=document.getElementById('fileInput');
+<div class="chart-row">
+<div class="chart-card">
+<h3>PHX6 Weekly Performance Trend</h3>
+<div class="desc">Refurb PtP, Success Rate, and Heat Seal Clean PtP</div>
+<div id="chart-site-trend" style="height:350px"></div>
+</div>
+<div class="chart-card">
+<h3>Associate Performance Map (WE 3/15)</h3>
+<div class="desc">PtP vs Units • Bubble size = Success Rate • Color = Status</div>
+<div id="chart-assoc-scatter" style="height:350px"></div>
+</div>
+</div>
 
-dropZone.addEventListener('click',()=>fileInput.click());
-dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('dragover')});
-dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('dragover'));
-dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('dragover');handleFiles(e.dataTransfer.files)});
-fileInput.addEventListener('change',e=>handleFiles(e.target.files));
+<div class="chart-row">
+<div class="chart-card">
+<h3>🏆 Top Performers (WE 3/15)</h3>
+<div style="overflow-x:auto">
+<table class="data-table">
+<thead><tr><th>Associate</th><th>Manager</th><th>PtP</th><th>Success Rate</th><th>Units</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td><strong>caalannj</strong></td><td>domjsan</td><td style="color:var(--green)">1.3716</td><td>93.63%</td><td>39</td><td><span class="badge badge-green">Elite</span></td></tr>
+<tr><td><strong>ricarcor</strong></td><td>mrmaurer</td><td style="color:var(--green)">1.3319</td><td>93.82%</td><td>260</td><td><span class="badge badge-green">Elite</span></td></tr>
+<tr><td><strong>hagracha</strong></td><td>jcaro</td><td style="color:var(--green)">1.2686</td><td>88.02%</td><td>342</td><td><span class="badge badge-green">Elite</span></td></tr>
+<tr><td><strong>mgmuniz</strong></td><td>yhermosi</td><td style="color:var(--green)">1.2645</td><td>88.91%</td><td>146</td><td><span class="badge badge-green">Strong</span></td></tr>
+<tr><td><strong>gccordov</strong></td><td>mrmaurer</td><td style="color:var(--green)">1.2455</td><td>86.75%</td><td>339</td><td><span class="badge badge-green">Strong</span></td></tr>
+<tr><td><strong>geoffspe</strong></td><td>delajojo</td><td style="color:var(--green)">1.2235</td><td>85.61%</td><td>189</td><td><span class="badge badge-green">Strong</span></td></tr>
+<tr><td><strong>priscdur</strong></td><td>jerecurm</td><td style="color:var(--green)">1.1908</td><td>83.19%</td><td>43</td><td><span class="badge badge-green">Strong</span></td></tr>
+<tr><td><strong>vanezzaa</strong></td><td>wongphas</td><td style="color:var(--green)">1.1760</td><td>81.55%</td><td>134</td><td><span class="badge badge-green">Strong</span></td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="chart-card">
+<h3>⚠️ Bottom Performers (WE 3/15)</h3>
+<div style="overflow-x:auto">
+<table class="data-table">
+<thead><tr><th>Associate</th><th>Manager</th><th>PtP</th><th>Success Rate</th><th>Units</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td><strong>beyoyrob</strong></td><td>aaalmasr</td><td style="color:var(--red)">0.5875</td><td>42.40%</td><td>77</td><td><span class="badge badge-red">Critical</span></td></tr>
+<tr><td><strong>jaaronma</strong></td><td>mrmaurer</td><td style="color:var(--red)">0.5946</td><td>41.09%</td><td>46</td><td><span class="badge badge-red">Critical</span></td></tr>
+<tr><td><strong>deoramir</strong></td><td>diepsanc</td><td style="color:var(--red)">0.7504</td><td>52.31%</td><td>212</td><td><span class="badge badge-red">Critical</span></td></tr>
+<tr><td><strong>durajust</strong></td><td>xjacosta</td><td style="color:var(--orange)">0.8292</td><td>58.52%</td><td>196</td><td><span class="badge badge-yellow">Below Target</span></td></tr>
+<tr><td><strong>gshermac</strong></td><td>zrittenh</td><td style="color:var(--orange)">0.8881</td><td>62.35%</td><td>151</td><td><span class="badge badge-yellow">Below Target</span></td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
 
-function handleFiles(files){
-  const log=document.getElementById('uploadLog');
-  log.innerHTML='';
-  Array.from(files).forEach(file=>{
-    Papa.parse(file,{
-      header:true,
-      skipEmptyLines:true,
-      dynamicTyping:true,
-      complete:function(results){
-        if(results.data.length===0){
-          addLog(log,'❌',file.name,'No data found in file','var(--red)');
-          return;
-        }
-        const firstRow=results.data[0];
-        let matched=false;
-        for(const ft of FILE_TYPES){
-          if(ft.detect(firstRow)){
-            DATA[ft.key]=results.data;
-            localStorage.setItem('arDash_'+ft.key,JSON.stringify(results.data));
-            localStorage.setItem('arDash_'+ft.key+'_date',new Date().toISOString());
-            localStorage.setItem('arDash_'+ft.key+'_file',file.name);
-            addLog(log,'✅',file.name,'Detected as: '+ft.name+' ('+results.data.length+' rows)','var(--green)');
-            matched=true;
-            break;
-          }
-        }
-        if(!matched){
-          addLog(log,'⚠️',file.name,'Could not auto-detect file type. Headers: '+Object.keys(firstRow).slice(0,4).join(', ')+'...','var(--orange)');
-        }
-        updateFileStatus();
-        updateGlobalStatus();
-        renderAll();
-      },
-      error:function(err){
-        addLog(log,'❌',file.name,'Parse error: '+err.message,'var(--red)');
-      }
-    });
-  });
-}
+<div class="chart-card">
+<h3>🚨 deoramir — 5-Week Consecutive Decline</h3>
+<div class="desc">Largest individual drag on PHX6 performance • Manager: diepsanc</div>
+<div id="chart-deoramir" style="height:280px"></div>
+</div>
 
-function addLog(container,icon,filename,message,color){
-  const div=document.createElement('div');
-  div.style.cssText='padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;font-size:13px;display:flex;align-items:center;gap:10px';
-  div.innerHTML=`<span style="font-size:18px">${icon}</span><div><strong style="color:${color}">${filename}</strong><br><span style="color:var(--text2);font-size:11px">${message}</span></div>`;
-  container.appendChild(div);
-}
+<div class="chart-card">
+<h3>Manager Rollup (WE 3/15)</h3>
+<div class="desc">Aggregate performance by manager • Weighted by associate volume</div>
+<div id="chart-manager" style="height:350px"></div>
+</div>
+</div>
 
-function updateFileStatus(){
-  const container=document.getElementById('fileStatus');
-  container.innerHTML='';
-  FILE_TYPES.forEach(ft=>{
-    const loaded=DATA[ft.key]!==null;
-    const date=localStorage.getItem('arDash_'+ft.key+'_date');
-    const fname=localStorage.getItem('arDash_'+ft.key+'_file');
-    const rows=loaded?DATA[ft.key].length:0;
-    container.innerHTML+=`
-    <div class="file-card">
-      <div class="icon ${loaded?'loaded':'empty'}">${ft.icon}</div>
-      <div class="info">
-        <div class="name">${ft.name}</div>
-        <div class="detail">${loaded?rows+' rows • '+(fname||'uploaded')+' • '+new Date(date).toLocaleDateString():'Not uploaded yet'}</div>
-      </div>
-      <span class="badge ${loaded?'loaded':'missing'}">${loaded?'✓ Loaded':'Missing'}</span>
-    </div>`;
-  });
-}
+<!-- TAB 4: DIVERGENCE -->
+<div id="tab-divergence" class="tab-content">
+<div class="section-header"><span class="icon">⚡</span>Dollar vs Unit PtP Divergence Analyzer</div>
+<div class="kpi-row">
+<div class="kpi">
+<div class="kpi-label">AR PtP ($) Current</div>
+<div class="kpi-value" style="color:var(--orange)">1.0207</div>
+<div class="kpi-sub kpi-down">▼ 3.8% over 5 weeks</div>
+</div>
+<div class="kpi">
+<div class="kpi-label">AR Flat Yield ($)</div>
+<div class="kpi-value" style="color:var(--red)">73.48%</div>
+<div class="kpi-sub kpi-down">Lowest in 5 weeks</div>
+</div>
+<div class="kpi">
+<div class="kpi-label">AR Flat Yield (Units)</div>
+<div class="kpi-value" style="color:var(--orange)">72.22%</div>
+<div class="kpi-sub kpi-down">Also declining</div>
+</div>
+<div class="kpi">
+<div class="kpi-label">Divergence Signal</div>
+<div class="kpi-value" style="color:var(--red)">ACTIVE</div>
+<div class="kpi-sub kpi-warn">$ declining faster than units</div>
+</div>
+</div>
 
-function updateGlobalStatus(){
-  const dot=document.getElementById('globalStatus');
-  const txt=document.getElementById('globalStatusText');
-  const count=FILE_TYPES.filter(ft=>DATA[ft.key]!==null).length;
-  if(count===6){dot.className='status-dot green';txt.textContent='All 6 files loaded'}
-  else if(count>0){dot.className='status-dot orange';txt.textContent=count+'/6 files loaded'}
-  else{dot.className='status-dot red';txt.textContent='No data loaded'}
-}
+<div class="alert-box">
+<strong>🚨 DIVERGENCE DETECTED:</strong> Dollar-based PtP is declining faster than unit-based PtP (3.8% vs unit decline over 5 weeks). This means <strong>higher-value items are underperforming disproportionately</strong>. A single failed $200 refurb wipes out gains from 13 successful $15 refurbs.
+</div>
 
-function clearAll(){
-  if(!confirm('Clear all uploaded data? You will need to re-upload your CSVs.'))return;
-  FILE_TYPES.forEach(ft=>{DATA[ft.key]=null;localStorage.removeItem('arDash_'+ft.key);localStorage.removeItem('arDash_'+ft.key+'_date');localStorage.removeItem('arDash_'+ft.key+'_file')});
-  updateFileStatus();updateGlobalStatus();renderAll();
-}
+<div class="chart-card">
+<h3>Dollar vs Unit Yield Divergence (5-Week Trend)</h3>
+<div class="desc">When the gap widens, expensive items are failing more • Shaded area = divergence gap</div>
+<div id="chart-divergence" style="height:400px"></div>
+</div>
 
-// ═══════════════════════════════════════════
-// TAB SWITCHING
-// ═══════════════════════════════════════════
-function switchTab(id){
-  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
-  document.getElementById('tab-'+id).classList.add('active');
-  const tabs=document.querySelectorAll('.tab');
-  const tabMap=['upload','overview','gl','site','divergence','actions'];
-  tabs[tabMap.indexOf(id)].classList.add('active');
-  renderAll();
-}
+<div class="chart-row">
+<div class="chart-card">
+<h3>Flat Yield Comparison: Units vs Dollars</h3>
+<div class="desc">Both declining, but dollar yield falling faster</div>
+<div id="chart-flat-yield" style="height:320px"></div>
+</div>
+<div class="chart-card">
+<h3>Opp COGs Compression</h3>
+<div class="desc">Margin shrinking rapidly — from $55K to $12K in 5 weeks</div>
+<div id="chart-opp-cogs" style="height:320px"></div>
+</div>
+</div>
 
-// ═══════════════════════════════════════════
-// PLOTLY THEME
-// ═══════════════════════════════════════════
-const plotlyLayout={
-  paper_bgcolor:'transparent',plot_bgcolor:'transparent',
-  font:{color:'#8899AA',family:'Segoe UI,system-ui',size:11},
-  margin:{l:50,r:20,t:40,b:50},
-  xaxis:{gridcolor:'#2a3a4a',linecolor:'#2a3a4a',zerolinecolor:'#2a3a4a'},
-  yaxis:{gridcolor:'#2a3a4a',linecolor:'#2a3a4a',zerolinecolor:'#2a3a4a'},
-  legend:{bgcolor:'transparent',font:{size:11}},
-  hoverlabel:{bgcolor:'#1a2736',bordercolor:'#4A90E2',font:{color:'#E8EDF2',size:12}}
-};
-const plotlyConfig={responsive:true,displaylogo:false,modeBarButtonsToRemove:['lasso2d','select2d']};
+<div class="chart-card">
+<h3>Divergence Decomposition Table</h3>
+<div style="overflow-x:auto">
+<table class="data-table">
+<thead><tr><th>Week</th><th>Flat Yield (Units)</th><th>Flat Yield ($)</th><th>Gap</th><th>AR PtP ($)</th><th>AR Opp COGs</th><th>Signal</th></tr></thead>
+<tbody>
+<tr><td>2/15</td><td>73.13%</td><td>76.02%</td><td style="color:var(--green)">+2.89pp</td><td>1.0610</td><td style="color:var(--green)">$55,081</td><td><span class="badge badge-green">Healthy</span></td></tr>
+<tr><td>2/22</td><td>72.97%</td><td>74.97%</td><td style="color:var(--green)">+2.00pp</td><td>1.0548</td><td style="color:var(--green)">$46,546</td><td><span class="badge badge-yellow">Narrowing</span></td></tr>
+<tr><td>3/1</td><td>74.34%</td><td>76.11%</td><td style="color:var(--green)">+1.77pp</td><td>1.0411</td><td style="color:var(--green)">$40,450</td><td><span class="badge badge-yellow">Narrowing</span></td></tr>
+<tr><td>3/8</td><td>72.68%</td><td>75.27%</td><td style="color:var(--green)">+2.59pp</td><td>1.0426</td><td style="color:var(--green)">$37,524</td><td><span class="badge badge-yellow">Stable</span></td></tr>
+<tr><td><strong>3/15</strong></td><td style="color:var(--red)">72.22%</td><td style="color:var(--red)">73.48%</td><td style="color:var(--orange)">+1.26pp</td><td style="color:var(--orange)">1.0207</td><td style="color:var(--orange)">$12,024</td><td><span class="badge badge-red">Compressing</span></td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
 
-// ═══════════════════════════════════════════
-// HELPER FUNCTIONS
-// ═══════════════════════════════════════════
-function ptpBadge(v){
-  if(v===null||v===undefined||isNaN(v))return'<span class="ptp-badge below">N/A</span>';
-  const n=parseFloat(v);
-  if(n>=1.05)return`<span class="ptp-badge strong">${n.toFixed(4)}</span>`;
-  if(n>=1.0)return`<span class="ptp-badge target">${n.toFixed(4)}</span>`;
-  if(n>=0.9)return`<span class="ptp-badge below">${n.toFixed(4)}</span>`;
-  return`<span class="ptp-badge critical">${n.toFixed(4)}</span>`;
-}
-function fmt(n,d=2){return n!==null&&n!==undefined&&!isNaN(n)?parseFloat(n).toFixed(d):'N/A'}
-function fmtPct(n){return n!==null&&!isNaN(n)?(parseFloat(n)*100).toFixed(1)+'%':'N/A'}
-function fmtMoney(n){if(n===null||isNaN(n))return'N/A';const v=parseFloat(n);return(v<0?'-':'')+' $'+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}
-function parseDate(s){if(!s)return null;return new Date(s.replace(' 00:00:00',''))}
+<!-- TAB 5: ACTIONS -->
+<div id="tab-actions" class="tab-content">
+<div class="section-header"><span class="icon">🎯</span>Action Prioritizer</div>
 
-// ═══════════════════════════════════════════
-// RENDER ALL
-// ═══════════════════════════════════════════
-function renderAll(){
-  renderOverview();
-  renderGL();
-  renderSite();
-  renderDivergence();
-  renderActions();
-}
+<div class="kpi-row">
+<div class="kpi" style="border-left:4px solid var(--red)">
+<div class="kpi-label">🔴 Immediate Actions</div>
+<div class="kpi-value">4</div>
+<div class="kpi-sub">This week</div>
+</div>
+<div class="kpi" style="border-left:4px solid var(--orange)">
+<div class="kpi-label">🟡 Sprint Actions</div>
+<div class="kpi-value">5</div>
+<div class="kpi-sub">Next 2 weeks</div>
+</div>
+<div class="kpi" style="border-left:4px solid var(--green)">
+<div class="kpi-label">🟢 Sustain Actions</div>
+<div class="kpi-value">4</div>
+<div class="kpi-sub">Next 30 days</div>
+</div>
+<div class="kpi" style="border-left:4px solid var(--blue)">
+<div class="kpi-label">Projected PtP if All Succeed</div>
+<div class="kpi-value" style="color:var(--green)">~1.05</div>
+<div class="kpi-sub kpi-up">Restores Jan levels</div>
+</div>
+</div>
 
-// ═══════════════════════════════════════════
-// TAB 2: PROGRAM OVERVIEW
-// ═══════════════════════════════════════════
-function renderOverview(){
-  const el=document.getElementById('overviewContent');
-  if(!DATA.yieldCOGS&&!DATA.overallPerformance&&!DATA.yieldDaily){
-    el.innerHTML='<div class="empty-state"><div class="icon">📈</div><h3>Upload Data to View Program Overview</h3><p>Upload Yield PTP COGS Weekly, Overall Performance, and/or Yield PtP Performance CSVs</p></div>';
-    return;
-  }
-  let html='';
+<div class="chart-card">
+<h3>🔴 Priority 1 — Immediate (This Week)</h3>
+<table class="data-table">
+<thead><tr><th>#</th><th>Action</th><th>Owner</th><th>Target</th><th>Impact</th></tr></thead>
+<tbody>
+<tr><td><span class="badge badge-red">AP-1</span></td><td><strong>gl_toy deep-dive</strong> — Analyze 23,293 units at 0.9503 PtP by sub-category, defect type, supplier</td><td>AR Program Lead</td><td>72 hrs</td><td>Largest volume loser</td></tr>
+<tr><td><span class="badge badge-red">AP-2</span></td><td><strong>gl_drugstore gate review</strong> — 6,220 units at 0.8765 PtP. Evaluate exit from refurb program</td><td>AR Program Lead</td><td>72 hrs</td><td>Worst PtP at scale</td></tr>
+<tr><td><span class="badge badge-red">AP-3</span></td><td><strong>deoramir coaching</strong> — 5-week decline (1.036→0.750). 1:1 with diepsanc, shadow ricarcor</td><td>diepsanc</td><td>48 hrs</td><td>212 units/wk drag</td></tr>
+<tr><td><span class="badge badge-red">AP-4</span></td><td><strong>gshermac investigation</strong> — 22% single-week drop (1.139→0.888). Root cause TBD</td><td>zrittenh</td><td>48 hrs</td><td>151 units/wk at risk</td></tr>
+</tbody>
+</table>
+</div>
 
-  // KPIs from yieldCOGS
-  if(DATA.yieldCOGS){
-    const sorted=[...DATA.yieldCOGS].sort((a,b)=>new Date(b['Evaluation Day Lcl'])-new Date(a['Evaluation Day Lcl']));
-    const latest=sorted[0];const prev=sorted[1];
-    const currentPtp=parseFloat(latest['Yield PtP (CUSTOM)']);
-    const prevPtp=prev?parseFloat(prev['Yield PtP (CUSTOM)']):null;
-    const wow=prevPtp?(((currentPtp-prevPtp)/prevPtp)*100).toFixed(1):null;
-    const costU=parseFloat(latest['Cost Unsellable (SUM)']);
-    // Project breakeven
-    const pts=sorted.slice(0,8).reverse().map((r,i)=>({x:i,y:parseFloat(r['Yield PtP (CUSTOM)'])}));
-    let slope=0;
-    if(pts.length>=2){const n=pts.length;const sx=pts.reduce((a,p)=>a+p.x,0);const sy=pts.reduce((a,p)=>a+p.y,0);const sxy=pts.reduce((a,p)=>a+p.x*p.y,0);const sxx=pts.reduce((a,p)=>a+p.x*p.x,0);slope=(n*sxy-sx*sy)/(n*sxx-sx*sx)}
-    const weeksToBreakeven=slope<0?Math.ceil((1.0-currentPtp)/slope):null;
-    const breakevenText=weeksToBreakeven&&weeksToBreakeven>0?'~'+weeksToBreakeven+' weeks':'Not projected';
+<div class="chart-card">
+<h3>🟡 Priority 2 — This Sprint (Next 2 Weeks)</h3>
+<table class="data-table">
+<thead><tr><th>#</th><th>Action</th><th>Owner</th><th>Target</th><th>Impact</th></tr></thead>
+<tbody>
+<tr><td><span class="badge badge-yellow">AP-5</span></td><td><strong>gl_wireless margin recovery</strong> — 19,399 units only 1.2% below breakeven. Highest ROI fix</td><td>Category Lead</td><td>WE 3/29</td><td>Low-hanging fruit</td></tr>
+<tr><td><span class="badge badge-yellow">AP-6</span></td><td><strong>High-value ASIN investigation</strong> — Pull top 20 ASINs by $ value with PtP < 1.0</td><td>AR Analytics</td><td>WE 3/29</td><td>Fixes $ PtP divergence</td></tr>
+<tr><td><span class="badge badge-yellow">AP-7</span></td><td><strong>Bottom-quartile coaching program</strong> — Formalize for deoramir, durajust, beyoyrob, gshermac</td><td>PHX6 Site Lead</td><td>WE 4/5</td><td>636 units → breakeven</td></tr>
+<tr><td><span class="badge badge-yellow">AP-8</span></td><td><strong>Zero-PtP associate audit</strong> — viguerde, cannesto, bructama persistent 0.0 PtP</td><td>Shift Leads</td><td>WE 3/29</td><td>Capacity recovery</td></tr>
+<tr><td><span class="badge badge-yellow">AP-9</span></td><td><strong>gl_music & gl_dvd gate review</strong> — 0.7197 and 0.8187 PtP. Evaluate program exit</td><td>AR Program Lead</td><td>WE 3/29</td><td>2,602 units</td></tr>
+</tbody>
+</table>
+</div>
 
-    html+=`<div class="kpi-row">
-      <div class="kpi"><div class="label">Current Yield PtP</div><div class="value ${currentPtp>=1.0?'green':'red'}">${fmt(currentPtp,4)}</div><div class="sub">${wow?'WoW: '+(wow>0?'+':'')+wow+'%':''}</div></div>
-      <div class="kpi"><div class="label">Cost Unsellable</div><div class="value blue">${fmtMoney(costU)}</div><div class="sub">Latest week</div></div>
-      <div class="kpi"><div class="label">Weekly Trend</div><div class="value ${slope>=0?'green':'red'}">${slope>=0?'📈 Improving':'📉 Declining'}</div><div class="sub">${fmt(slope*100,2)}% per week</div></div>
-      <div class="kpi"><div class="label">Breakeven Breach</div><div class="value ${weeksToBreakeven&&weeksToBreakeven<10?'red':'green'}">${breakevenText}</div><div class="sub">${currentPtp>=1.0?'Currently above 1.0':'⚠️ Already below 1.0'}</div></div>
-    </div>`;
+<div class="chart-card">
+<h3>🟢 Priority 3 — Sustain & Scale (30 Days)</h3>
+<table class="data-table">
+<thead><tr><th>#</th><th>Action</th><th>Owner</th><th>Target</th><th>Impact</th></tr></thead>
+<tbody>
+<tr><td><span class="badge badge-green">AP-10</span></td><td><strong>Automated PtP alert system</strong> — Weekly alerts when GL or associate crosses below 1.0</td><td>AR Analytics</td><td>WE 4/12</td><td>Early warning</td></tr>
+<tr><td><span class="badge badge-green">AP-11</span></td><td><strong>Category gating framework</strong> — Define PtP thresholds for auto-review triggers</td><td>AR Program Lead</td><td>WE 4/12</td><td>Structural defense</td></tr>
+<tr><td><span class="badge badge-green">AP-12</span></td><td><strong>Top performer recognition</strong> — ricarcor, geoffspe, hagracha, gccordov for mentor roles</td><td>Site Leadership</td><td>WE 4/5</td><td>Retention + multiplier</td></tr>
+<tr><td><span class="badge badge-green">AP-13</span></td><td><strong>Quarterly GL portfolio review</strong> — All categories reviewed by PtP × Volume</td><td>AR Program Lead</td><td>Q2 Start</td><td>Ongoing optimization</td></tr>
+</tbody>
+</table>
+</div>
 
-    // 12-week trend chart
-    html+='<div class="chart-container"><h3>12-Week Yield PtP Trend</h3><div class="subtitle">Weekly Yield PtP with Cost Unsellable overlay</div><div id="yieldTrendChart" class="plotly-chart"></div></div>';
-  }
+<div class="chart-card">
+<h3>📊 Impact Modeling — Path to Recovery</h3>
+<div class="desc">Projected PtP improvement if action plans succeed</div>
+<div id="chart-waterfall" style="height:350px"></div>
+</div>
+</div>
 
-  // Daily chart
-  if(DATA.yieldDaily){
-    html+='<div class="chart-container"><h3>Daily AR Yield PtP (Most Recent Week)</h3><div class="subtitle">Day-by-day performance with breakeven reference</div><div id="dailyPtpChart" class="plotly-chart"></div></div>';
-  }
+<!-- TAB 6: DATA SOURCES -->
+<div id="tab-datasource" class="tab-content">
+<div class="section-header"><span class="icon">🗄️</span>Data Sources & SQL Reference</div>
 
-  // Overall Performance comparison
-  if(DATA.overallPerformance){
-    html+='<div class="chart-container"><h3>AR vs CR Performance Comparison</h3><div class="subtitle">Yield PtP ($) and Opportunity COGs trends</div><div id="arCrChart" class="plotly-chart"></div></div>';
-  }
+<div class="insight-box">
+<strong>💡 FOR QUICKSIGHT / REDSHIFT BUILD:</strong> Below are the exact table names, schemas, and SQL queries you need to connect this dashboard to live data via <strong>andes.rr_metrics</strong> in Redshift. Use these when your access is approved.
+</div>
 
-  el.innerHTML=html;
+<div class="chart-card">
+<h3>Key Tables</h3>
+<table class="data-table">
+<thead><tr><th>Purpose</th><th>Table</th><th>Schema</th><th>Key Columns</th></tr></thead>
+<tbody>
+<tr><td>AR Yield (Detail)</td><td><span class="tag tag-table">d_aw_yield_ptp</span></td><td><span class="tag tag-schema">andes.rr_metrics</span></td><td>evaluation_day_lcl, cost_sellable, cost, ma_op2_sellable_cogs, gl_product_group</td></tr>
+<tr><td>AR Yield (Aggregate)</td><td><span class="tag tag-table">a_aw_yield_ptp</span></td><td><span class="tag tag-schema">andes.rr_metrics</span></td><td>warehouse_id, opportunity_cogs, ar_yield_ptp</td></tr>
+<tr><td>AR Concessions</td><td><span class="tag tag-table">ta_whd_concessions</span></td><td><span class="tag tag-schema">andes.wdmetrics_serv</span></td><td>ship_day, ship_units_wbr, conc_units_wbr_all, sold_as_brand_new_index</td></tr>
+<tr><td>Site Mapping</td><td><span class="tag tag-table">warehouse_site_type_map</span></td><td><span class="tag tag-schema">andes.rr_internal</span></td><td>warehouse_id, site_type_wbr, relo_ops_region</td></tr>
+</tbody>
+</table>
+</div>
 
-  // Render charts
-  if(DATA.yieldCOGS){
-    const sorted=[...DATA.yieldCOGS].sort((a,b)=>new Date(a['Evaluation Day Lcl'])-new Date(b['Evaluation Day Lcl']));
-    const dates=sorted.map(r=>r['Evaluation Day Lcl'].split(' ')[0]);
-    const ptp=sorted.map(r=>parseFloat(r['Yield PtP (CUSTOM)']));
-    const cost=sorted.map(r=>parseFloat(r['Cost Unsellable (SUM)']));
-    Plotly.newPlot('yieldTrendChart',[
-      {x:dates,y:ptp,name:'Yield PtP',type:'scatter',mode:'lines+markers',line:{color:'#4A90E2',width:3},marker:{size:8}},
-      {x:dates,y:cost,name:'Cost Unsellable',type:'bar',yaxis:'y2',marker:{color:'rgba(243,156,18,0.3)'},hovertemplate:'$%{y:,.0f}'}
-    ],{...plotlyLayout,title:{text:''},yaxis:{...plotlyLayout.yaxis,title:'Yield PtP',range:[Math.min(...ptp)*0.98,Math.max(...ptp)*1.02]},yaxis2:{overlaying:'y',side:'right',title:'Cost Unsellable ($)',gridcolor:'transparent',showgrid:false},shapes:[{type:'line',x0:dates[0],x1:dates[dates.length-1],y0:1.0,y1:1.0,line:{color:'#E74C3C',width:2,dash:'dash'}}],annotations:[{x:dates[dates.length-1],y:1.0,text:'Breakeven',showarrow:false,yshift:12,font:{color:'#E74C3C',size:11}}]},plotlyConfig);
-  }
+<div class="collapsible" onclick="toggleCollapse(this)">
+<span>📄 SQL: AR Yield (COGS-Based) — For Dollar PtP</span><span>▼</span>
+</div>
+<div class="collapsible-content">
+<div class="sql-box"><span class="sql-comment">-- AR Yield % = Sellable COGS / Total Graded COGS
+-- AR Yield PtP = Actual Sellable COGS / OP2 Plan Sellable COGS</span>
 
-  if(DATA.yieldDaily){
-    const sorted=[...DATA.yieldDaily].sort((a,b)=>new Date(a['Evaluation Day Lcl'])-new Date(b['Evaluation Day Lcl']));
-    const dates=sorted.map(r=>r['Evaluation Day Lcl'].split(' ')[0]);
-    const ptp=sorted.map(r=>parseFloat(r['AR Yield PtP']));
-    const colors=ptp.map(v=>v>=1.0?'#2ECC71':'#E74C3C');
-    Plotly.newPlot('dailyPtpChart',[
-      {x:dates,y:ptp,type:'bar',marker:{color:colors},text:ptp.map(v=>v.toFixed(4)),textposition:'outside',textfont:{color:'#E8EDF2',size:11}}
-    ],{...plotlyLayout,yaxis:{...plotlyLayout.yaxis,title:'AR Yield PtP',range:[Math.min(...ptp)*0.97,Math.max(...ptp)*1.03]},shapes:[{type:'line',x0:dates[0],x1:dates[dates.length-1],y0:1.0,y1:1.0,line:{color:'#E74C3C',width:2,dash:'dash'}}]},plotlyConfig);
-  }
+<span class="sql-keyword">SELECT</span>
+    TO_CHAR(evaluation_day_lcl, <span class="sql-string">'YYYY-MM'</span>) <span class="sql-keyword">AS</span> year_month,
+    SUM(cost_sellable) <span class="sql-keyword">AS</span> total_sellable_cogs,
+    SUM(cost) <span class="sql-keyword">AS</span> total_graded_cogs,
+    ROUND((SUM(cost_sellable) / NULLIF(SUM(cost), 0)) * 100, 2) <span class="sql-keyword">AS</span> ar_yield_pct,
+    SUM(ma_op2_sellable_cogs) <span class="sql-keyword">AS</span> plan_sellable_cogs,
+    ROUND((SUM(cost_sellable) / NULLIF(SUM(ma_op2_sellable_cogs), 0)) * 100, 2) <span class="sql-keyword">AS</span> ar_yield_ptp
+<span class="sql-keyword">FROM</span> andes.rr_metrics.d_aw_yield_ptp
+<span class="sql-keyword">WHERE</span> marketplace_id = 1
+    <span class="sql-keyword">AND</span> metric = <span class="sql-string">'aw_yield'</span>
+    <span class="sql-keyword">AND</span> channel = <span class="sql-string">'RETAIL'</span>
+    <span class="sql-keyword">AND</span> evaluation_day_lcl <span class="sql-keyword">BETWEEN</span> <span class="sql-string">'2026-01-01'</span> <span class="sql-keyword">AND</span> <span class="sql-string">'2026-03-21'</span>
+<span class="sql-keyword">GROUP BY</span> 1
+<span class="sql-keyword">ORDER BY</span> 1;</div>
+</div>
 
-  if(DATA.overallPerformance){
-    const sorted=[...DATA.overallPerformance].sort((a,b)=>new Date(a.process_date)-new Date(b.process_date));
-    const dates=sorted.map(r=>r.process_date.split(' ')[0]);
-    Plotly.newPlot('arCrChart',[
-      {x:dates,y:sorted.map(r=>parseFloat(r['AR Yield PtP ($)'])),name:'AR PtP ($)',type:'scatter',mode:'lines+markers',line:{color:'#4A90E2',width:3},marker:{size:8}},
-      {x:dates,y:sorted.map(r=>parseFloat(r['CR Yield PtP ($)'])),name:'CR PtP ($)',type:'scatter',mode:'lines+markers',line:{color:'#F39C12',width:3},marker:{size:8}},
-    ],{...plotlyLayout,yaxis:{...plotlyLayout.yaxis,title:'Yield PtP ($)'},shapes:[{type:'line',x0:dates[0],x1:dates[dates.length-1],y0:1.0,y1:1.0,line:{color:'#E74C3C',width:1,dash:'dash'}}]},plotlyConfig);
-  }
-}
+<div class="collapsible" onclick="toggleCollapse(this)">
+<span>📄 SQL: AR Yield (Unit-Based) — For Unit PtP</span><span>▼</span>
+</div>
+<div class="collapsible-content">
+<div class="sql-box"><span class="sql-comment">-- Unit-based yield works for all channels</span>
 
-// ═══════════════════════════════════════════
-// TAB 3: GL CATEGORIES
-// ═══════════════════════════════════════════
-function renderGL(){
-  const el=document.getElementById('glContent');
-  if(!DATA.glPerformance){el.innerHTML='<div class="empty-state"><div class="icon">🏷️</div><h3>Upload Yield Performance by GL CSV</h3></div>';return}
+<span class="sql-keyword">SELECT</span>
+    TO_CHAR(evaluation_day_lcl, <span class="sql-string">'YYYY-MM'</span>) <span class="sql-keyword">AS</span> year_month,
+    SUM(sellable_units) <span class="sql-keyword">AS</span> sellable_units,
+    SUM(sellable_units + unsellable_units) <span class="sql-keyword">AS</span> total_units,
+    ROUND((SUM(sellable_units) / NULLIF(SUM(sellable_units + unsellable_units), 0)) * 100, 2) <span class="sql-keyword">AS</span> ar_yield_unit_pct,
+    SUM(ma_op2_sellable_units) <span class="sql-keyword">AS</span> plan_sellable_units,
+    ROUND((SUM(sellable_units) / NULLIF(SUM(ma_op2_sellable_units), 0)) * 100, 2) <span class="sql-keyword">AS</span> ar_yield_ptp_unit
+<span class="sql-keyword">FROM</span> andes.rr_metrics.d_aw_yield_ptp
+<span class="sql-keyword">WHERE</span> marketplace_id = 1
+    <span class="sql-keyword">AND</span> metric = <span class="sql-string">'aw_yield'</span>
+    <span class="sql-keyword">AND</span> evaluation_day_lcl <span class="sql-keyword">BETWEEN</span> <span class="sql-string">'2026-01-01'</span> <span class="sql-keyword">AND</span> <span class="sql-string">'2026-03-21'</span>
+<span class="sql-keyword">GROUP BY</span> 1
+<span class="sql-keyword">ORDER BY</span> 1;</div>
+</div>
 
-  const data=[...DATA.glPerformance].filter(r=>r['GL Product Group Description']&&r['Units']>0);
-  const sorted=[...data].sort((a,b)=>parseFloat(a['Yield PtP'])-parseFloat(b['Yield PtP']));
-  const aboveCount=data.filter(r=>parseFloat(r['Yield PtP'])>=1.0).length;
-  const belowCount=data.filter(r=>parseFloat(r['Yield PtP'])<1.0).length;
-  const totalUnits=data.reduce((s,r)=>s+parseInt(r['Units']),0);
-  const belowUnits=data.filter(r=>parseFloat(r['Yield PtP'])<1.0).reduce((s,r)=>s+parseInt(r['Units']),0);
+<div class="collapsible" onclick="toggleCollapse(this)">
+<span>📄 SQL: AR Concessions & RRV</span><span>▼</span>
+</div>
+<div class="collapsible-content">
+<div class="sql-box"><span class="sql-comment">-- Exclude last 8 weeks for data maturation</span>
 
-  let html=`<div class="kpi-row">
-    <div class="kpi"><div class="label">Total GL Categories</div><div class="value blue">${data.length}</div></div>
-    <div class="kpi"><div class="label">Above Breakeven</div><div class="value green">${aboveCount}</div><div class="sub">${((aboveCount/data.length)*100).toFixed(0)}% of categories</div></div>
-    <div class="kpi"><div class="label">Below Breakeven</div><div class="value red">${belowCount}</div><div class="sub">${belowUnits.toLocaleString()} units at risk</div></div>
-    <div class="kpi"><div class="label">Units Below 1.0</div><div class="value orange">${fmtPct(belowUnits/totalUnits)}</div><div class="sub">of total volume</div></div>
-  </div>`;
+<span class="sql-keyword">SELECT</span>
+    TO_CHAR(ship_day, <span class="sql-string">'YYYY-MM'</span>) <span class="sql-keyword">AS</span> year_month,
+    ROUND((SUM(conc_units_wbr_all) / NULLIF(SUM(ship_units_wbr), 0)) * 100, 4) <span class="sql-keyword">AS</span> ar_concession_rate_pct,
+    SUM(ship_units_wbr) <span class="sql-keyword">AS</span> shipped_units,
+    SUM(conc_units_wbr_all) <span class="sql-keyword">AS</span> conceded_units
+<span class="sql-keyword">FROM</span> andes.wdmetrics_serv.ta_whd_concessions
+<span class="sql-keyword">WHERE</span> marketplace_id = 1
+    <span class="sql-keyword">AND</span> ship_day < DATEADD(week, -8, CURRENT_DATE)
+    <span class="sql-keyword">AND</span> ship_day >= <span class="sql-string">'2026-01-01'</span>
+<span class="sql-keyword">GROUP BY</span> 1
+<span class="sql-keyword">ORDER BY</span> 1;</div>
+</div>
 
-  html+='<div class="chart-row"><div class="chart-container"><h3>GL Category PtP Performance</h3><div class="subtitle">All categories sorted by Yield PtP — red line = breakeven</div><div id="glBarChart" class="plotly-chart"></div></div>';
-  html+='<div class="chart-container"><h3>Volume vs PtP Bubble Chart</h3><div class="subtitle">Bubble size = units processed</div><div id="glBubbleChart" class="plotly-chart"></div></div></div>';
+<div class="collapsible" onclick="toggleCollapse(this)">
+<span>📄 SQL: Top Opportunity Sites</span><span>▼</span>
+</div>
+<div class="collapsible-content">
+<div class="sql-box"><span class="sql-keyword">SELECT</span>
+    warehouse_id,
+    SUM(cost_sellable) <span class="sql-keyword">AS</span> sellable_cogs,
+    SUM(cost) <span class="sql-keyword">AS</span> graded_cogs,
+    SUM(ma_op2_sellable_cogs) - SUM(cost_sellable) <span class="sql-keyword">AS</span> opportunity_cogs,
+    ROUND((SUM(cost_sellable) / NULLIF(SUM(cost), 0)) * 100, 2) <span class="sql-keyword">AS</span> ar_yield_pct,
+    ROUND((SUM(cost_sellable) / NULLIF(SUM(ma_op2_sellable_cogs), 0)) * 100, 2) <span class="sql-keyword">AS</span> ar_yield_ptp
+<span class="sql-keyword">FROM</span> andes.rr_metrics.a_aw_yield_ptp
+<span class="sql-keyword">WHERE</span> marketplace_id = <span class="sql-string">'1'</span>
+    <span class="sql-keyword">AND</span> channel = <span class="sql-string">'RETAIL'</span>
+    <span class="sql-keyword">AND</span> evaluation_day_lcl <span class="sql-keyword">BETWEEN</span> <span class="sql-string">'2026-03-15'</span> <span class="sql-keyword">AND</span> <span class="sql-string">'2026-03-21'</span>
+    <span class="sql-keyword">AND</span> relo_ops_region <span class="sql-keyword">IN</span> (<span class="sql-string">'US Relo - East'</span>, <span class="sql-string">'US Relo - West'</span>, <span class="sql-string">'US Relo - Central'</span>)
+<span class="sql-keyword">GROUP BY</span> 1
+<span class="sql-keyword">ORDER BY</span> opportunity_cogs <span class="sql-keyword">DESC</span>
+<span class="sql-keyword">LIMIT</span> 10;</div>
+</div>
 
-  // Table
-  html+='<div class="chart-container"><h3>GL Category Detail Table</h3><div class="subtitle">Sorted by Yield PtP ascending (worst first)</div><div class="table-scroll"><table class="data-table"><thead><tr><th>GL Category</th><th>Units</th><th>Yield</th><th>Expected</th><th>Yield PtP</th><th>Status</th></tr></thead><tbody>';
-  sorted.forEach(r=>{
-    const ptp=parseFloat(r['Yield PtP']);
-    const status=ptp>=1.05?'🟢 Strong':ptp>=1.0?'🟡 Target':ptp>=0.9?'🟠 Below':'🔴 Critical';
-    html+=`<tr><td><strong>${r['GL Product Group Description']}</strong></td><td>${parseInt(r['Units']).toLocaleString()}</td><td>${fmtPct(r['Yield'])}</td><td>${fmtPct(r['Expected Yield'])}</td><td>${ptpBadge(ptp)}</td><td>${status}</td></tr>`;
-  });
-  html+='</tbody></table></div></div>';
-  el.innerHTML=html;
+<div class="chart-card">
+<h3>⚠️ Critical Business Logic</h3>
+<table class="data-table">
+<thead><tr><th>Rule</th><th>Details</th></tr></thead>
+<tbody>
+<tr><td><strong>COGS Yield</strong></td><td>Filter <code>channel = 'RETAIL'</code> only — COGS not available for FBA/G&R</td></tr>
+<tr><td><strong>Concession Lag</strong></td><td>Exclude last 8 weeks — data needs maturation for returns</td></tr>
+<tr><td><strong>Core Network</strong></td><td><code>relo_ops_region IN ('US Relo - East', 'US Relo - West', 'US Relo - Central')</code></td></tr>
+<tr><td><strong>Unsellable</strong></td><td><code>listing_condition IN ('UNACCEPTABLE', 'USEDPOOR')</code></td></tr>
+<tr><td><strong>Shift Codes</strong></td><td>Sun/Mon/Tue = FHD/FHN • Wed = WD/WN • Thu/Fri/Sat = BHD/BHN</td></tr>
+<tr><td><strong>Exclusions</strong></td><td>Exclude: is_repair_first=1, is_repair_post_grading='Y', certain GLs (-1,27,349,400), reporting_cost≥90000</td></tr>
+</tbody>
+</table>
+</div>
+</div>
 
-  // Charts
-  const names=sorted.map(r=>r['GL Product Group Description'].replace('gl_',''));
-  const ptps=sorted.map(r=>parseFloat(r['Yield PtP']));
-  const colors=ptps.map(v=>v>=1.05?'#2ECC71':v>=1.0?'#F39C12':v>=0.9?'#E67E22':'#E74C3C');
-  Plotly.newPlot('glBarChart',[{y:names,x:ptps,type:'bar',orientation:'h',marker:{color:colors},text:ptps.map(v=>v.toFixed(4)),textposition:'outside',textfont:{size:10,color:'#8899AA'}}],{...plotlyLayout,height:Math.max(400,sorted.length*22),margin:{l:160,r:60,t:10,b:40},xaxis:{...plotlyLayout.xaxis,title:'Yield PtP'},shapes:[{type:'line',x0:1.0,x1:1.0,y0:-0.5,y1:sorted.length-0.5,line:{color:'#E74C3C',width:2,dash:'dash'}}]},plotlyConfig);
-
-  const bubbleData=data.map(r=>({x:parseInt(r['Units']),y:parseFloat(r['Yield PtP']),name:r['GL Product Group Description'].replace('gl_',''),size:Math.sqrt(parseInt(r['Units']))*2}));
-  Plotly.newPlot('glBubbleChart',[{x:bubbleData.map(d=>d.x),y:bubbleData.map(d=>d.y),text:bubbleData.map(d=>d.name),mode:'markers+text',textposition:'top center',textfont:{size:9,color:'#8899AA'},marker:{size:bubbleData.map(d=>Math.max(8,Math.min(50,d.size/3))),color:bubbleData.map(d=>d.y>=1.0?'rgba(46,204,113,0.6)':'rgba(231,76,60,0.6)'),line:{color:bubbleData.map(d=>d.y>=1.0?'#2ECC71':'#E74C3C'),width:1}},hovertemplate:'%{text}<br>Units: %{x:,}<br>PtP: %{y:.4f}<extra></extra>'}],{...plotlyLayout,xaxis:{...plotlyLayout.xaxis,title:'Units',type:'log'},yaxis:{...plotlyLayout.yaxis,title:'Yield PtP'},shapes:[{type:'line',x0:0,x1:1,y0:1.0,y1:1.0,xref:'paper',line:{color:'#E74C3C',width:2,dash:'dash'}}]},plotlyConfig);
-}
-
-// ═══════════════════════════════════════════
-// TAB 4: SITE & ASSOCIATES
-// ═══════════════════════════════════════════
-function renderSite(){
-  const el=document.getElementById('siteContent');
-  if(!DATA.siteWeekly&&!DATA.associateWeekly){el.innerHTML='<div class="empty-state"><div class="icon">🏭</div><h3>Upload Site & Associate Data</h3></div>';return}
-  let html='';
-
-  if(DATA.siteWeekly){
-    const sorted=[...DATA.siteWeekly].sort((a,b)=>new Date(a.refurb_end_time)-new Date(b.refurb_end_time));
-    const latest=sorted[sorted.length-1];
-    html+=`<div class="kpi-row">
-      <div class="kpi"><div class="label">Site Refurb PtP</div><div class="value ${parseFloat(latest['Refurb Ptp %'])>=1.0?'green':'red'}">${fmt(latest['Refurb Ptp %'],4)}</div></div>
-      <div class="kpi"><div class="label">Success Rate</div><div class="value blue">${fmtPct(latest['Overall Success Rate'])}</div></div>
-      <div class="kpi"><div class="label">Opp COGs</div><div class="value ${parseFloat(latest['Opp COGs'])>=0?'green':'red'}">${fmtMoney(latest['Opp COGs'])}</div></div>
-      <div class="kpi"><div class="label">HC Clean PtP</div><div class="value ${parseFloat(latest['Heat Seal Clean Ptp'])>=1.0?'green':'orange'}">${fmt(latest['Heat Seal Clean Ptp'],4)}</div></div>
-    </div>`;
-    html+='<div class="chart-container"><h3>PHX6 Weekly Site Performance</h3><div class="subtitle">Refurb PtP, Success Rate, and Heat Seal Clean PtP</div><div id="siteChart" class="plotly-chart"></div></div>';
-  }
-
-  if(DATA.associateWeekly){
-    // Get most recent week
-    const weeks=[...new Set(DATA.associateWeekly.map(r=>r.refurb_end_time))].sort().reverse();
-    const latestWeek=weeks[0];
-    const latestData=DATA.associateWeekly.filter(r=>r.refurb_end_time===latestWeek&&r['Refurb Units Tot Associate']>5&&r['Refurb Ptp']>0);
-    const sortedAssoc=[...latestData].sort((a,b)=>parseFloat(b['Refurb Ptp'])-parseFloat(a['Refurb Ptp']));
-    const top10=sortedAssoc.slice(0,10);
-    const bottom10=sortedAssoc.slice(-10).reverse();
-
-    html+='<div class="chart-container"><h3>Associate Performance — Week of '+latestWeek.split(' ')[0]+'</h3><div class="subtitle">PtP vs Units (min 5 units) — hover for details</div><div id="assocScatter" class="plotly-chart"></div></div>';
-
-    html+='<div class="chart-row"><div class="chart-container"><h3>🏆 Top 10 Associates</h3><div class="table-scroll"><table class="data-table"><thead><tr><th>Associate</th><th>Manager</th><th>PtP</th><th>Success Rate</th><th>Units</th></tr></thead><tbody>';
-    top10.forEach(r=>{html+=`<tr><td><strong>${r.Associate}</strong></td><td>${r.Manager}</td><td>${ptpBadge(r['Refurb Ptp'])}</td><td>${fmtPct(r['Success Rate'])}</td><td>${r['Refurb Units Tot Associate']}</td></tr>`});
-    html+='</tbody></table></div></div>';
-
-    html+='<div class="chart-container"><h3>⚠️ Bottom 10 Associates</h3><div class="table-scroll"><table class="data-table"><thead><tr><th>Associate</th><th>Manager</th><th>PtP</th><th>Success Rate</th><th>Units</th></tr></thead><tbody>';
-    bottom10.forEach(r=>{html+=`<tr><td><strong>${r.Associate}</strong></td><td>${r.Manager}</td><td>${ptpBadge(r['Refurb Ptp'])}</td><td>${fmtPct(r['Success Rate'])}</td><td>${r['Refurb Units Tot Associate']}</td></tr>`});
-    html+='</tbody></table></div></div></div>';
-
-    // Manager rollup
-    const managers={};
-    latestData.forEach(r=>{
-      const m=r.Manager;
-      if(!managers[m])managers[m]={units:0,weighted_ptp:0,count:0,associates:[]};
-      const u=parseInt(r['Refurb Units Tot Associate'])||0;
-      const p=parseFloat(r['Refurb Ptp'])||0;
-      managers[m].units+=u;
-      managers[m].weighted_ptp+=p*u;
-      managers[m].count++;
-      managers[m].associates.push(r.Associate);
-    });
-    const mgrList=Object.entries(managers).map(([name,d])=>({name,units:d.units,ptp:d.units>0?d.weighted_ptp/d.units:0,count:d.count})).sort((a,b)=>b.ptp-a.ptp);
-
-    html+='<div class="chart-container"><h3>Manager Rollup (Weighted by Volume)</h3><div class="table-scroll"><table class="data-table"><thead><tr><th>Manager</th><th>Associates</th><th>Total Units</th><th>Weighted PtP</th><th>Status</th></tr></thead><tbody>';
-    mgrList.forEach(m=>{
-      const status=m.ptp>=1.05?'🟢 Strong':m.ptp>=1.0?'🟡 Target':m.ptp>=0.9?'🟠 Below':'🔴 Critical';
-      html+=`<tr><td><strong>${m.name}</strong></td><td>${m.count}</td><td>${m.units.toLocaleString()}</td><td>${ptpBadge(m.ptp)}</td><td>${status}</td></tr>`;
-    });
-    html+='</tbody></table></div></div>';
-  }
-
-  el.innerHTML=html;
-
-  // Render charts
-  if(DATA.siteWeekly){
-    const sorted=[...DATA.siteWeekly].sort((a,b)=>new Date(a.refurb_end_time)-new Date(b.refurb_end_time));
-    const dates=sorted.map(r=>r.refurb_end_time.split(' ')[0]);
-    Plotly.newPlot('siteChart',[
-      {x:dates,y:sorted.map(r=>parseFloat(r['Refurb Ptp %'])),name:'Refurb PtP',type:'scatter',mode:'lines+markers',line:{color:'#4A90E2',width:3},marker:{size:8}},
-      {x:dates,y:sorted.map(r=>parseFloat(r['Heat Seal Clean Ptp'])),name:'HC Clean PtP',type:'scatter',mode:'lines+markers',line:{color:'#2ECC71',width:2},marker:{size:6}},
-      {x:dates,y:sorted.map(r=>parseFloat(r['Overall Success Rate'])),name:'Success Rate',type:'scatter',mode:'lines+markers',yaxis:'y2',line:{color:'#F39C12',width:2,dash:'dot'},marker:{size:6}}
-    ],{...plotlyLayout,yaxis:{...plotlyLayout.yaxis,title:'PtP'},yaxis2:{overlaying:'y',side:'right',title:'Success Rate',showgrid:false},shapes:[{type:'line',x0:dates[0],x1:dates[dates.length-1],y0:1.0,y1:1.0,line:{color:'#E74C3C',width:2,dash:'dash'}}]},plotlyConfig);
-  }
-
-  if(DATA.associateWeekly){
-    const weeks=[...new Set(DATA.associateWeekly.map(r=>r.refurb_end_time))].sort().reverse();
-    const latestData=DATA.associateWeekly.filter(r=>r.refurb_end_time===weeks[0]&&r['Refurb Units Tot Associate']>5&&r['Refurb Ptp']>0);
-    const colors=latestData.map(r=>parseFloat(r['Refurb Ptp'])>=1.0?'rgba(46,204,113,0.7)':'rgba(231,76,60,0.7)');
-    Plotly.newPlot('assocScatter',[{
-      x:latestData.map(r=>parseInt(r['Refurb Units Tot Associate'])),
-      y:latestData.map(r=>parseFloat(r['Refurb Ptp'])),
-      text:latestData.map(r=>r.Associate+' ('+r.Manager+')'),
-      mode:'markers',
-      marker:{size:10,color:colors,line:{color:latestData.map(r=>parseFloat(r['Refurb Ptp'])>=1.0?'#2ECC71':'#E74C3C'),width:1}},
-      hovertemplate:'%{text}<br>Units: %{x}<br>PtP: %{y:.4f}<extra></extra>'
-    }],{...plotlyLayout,xaxis:{...plotlyLayout.xaxis,title:'Units Processed'},yaxis:{...plotlyLayout.yaxis,title:'Refurb PtP'},shapes:[{type:'line',x0:0,x1:1,y0:1.0,y1:1.0,xref:'paper',line:{color:'#E74C3C',width:2,dash:'dash'}}]},plotlyConfig);
-  }
-}
-
-// ═══════════════════════════════════════════
-// TAB 5: DIVERGENCE
-// ═══════════════════════════════════════════
-function renderDivergence(){
-  const el=document.getElementById('divergenceContent');
-  if(!DATA.overallPerformance){el.innerHTML='<div class="empty-state"><div class="icon">⚖️</div><h3>Upload Overall Performance CSV</h3></div>';return}
-
-  const sorted=[...DATA.overallPerformance].sort((a,b)=>new Date(a.process_date)-new Date(b.process_date));
-  const dates=sorted.map(r=>r.process_date.split(' ')[0]);
-  const arPtpDollar=sorted.map(r=>parseFloat(r['AR Yield PtP ($)']));
-  const crPtpDollar=sorted.map(r=>parseFloat(r['CR Yield PtP ($)']));
-  const arOppCogs=sorted.map(r=>parseFloat(r['AR Yield Opp. COGS']));
-  const arFlatUnits=sorted.map(r=>parseFloat(r['Flat AR Yield (Units)']));
-  const arFlatDollars=sorted.map(r=>parseFloat(r['Flat AR Yield ($)']));
-  const gap=arFlatUnits.map((u,i)=>u-arFlatDollars[i]);
-
-  const latestGap=gap[gap.length-1];
-  const firstGap=gap[0];
-  const gapChange=latestGap-firstGap;
-  const latestArPtp=arPtpDollar[arPtpDollar.length-1];
-  const firstArPtp=arPtpDollar[0];
-  const ptpDecline=((latestArPtp-firstArPtp)/firstArPtp*100);
-
-  let html=`<div class="kpi-row">
-    <div class="kpi"><div class="label">AR Dollar PtP (Latest)</div><div class="value ${latestArPtp>=1.0?'green':'red'}">${fmt(latestArPtp,4)}</div></div>
-    <div class="kpi"><div class="label">Dollar PtP Decline</div><div class="value red">${fmt(ptpDecline,1)}%</div><div class="sub">Over ${dates.length} weeks</div></div>
-    <div class="kpi"><div class="label">Unit vs Dollar Yield Gap</div><div class="value ${latestGap>0.01?'red':'orange'}">${fmt(latestGap,4)}</div><div class="sub">${gapChange>0?'↑ Widening':'↓ Narrowing'}</div></div>
-    <div class="kpi"><div class="label">AR Opp COGs (Latest)</div><div class="value ${arOppCogs[arOppCogs.length-1]>0?'green':'red'}">${fmtMoney(arOppCogs[arOppCogs.length-1])}</div></div>
-  </div>`;
-
-  html+='<div class="chart-container"><h3>Dollar PtP vs Unit Yield — The Divergence</h3><div class="subtitle">When the gap widens, expensive items are underperforming disproportionately</div><div id="divergeChart" class="plotly-chart"></div></div>';
-  html+='<div class="chart-row"><div class="chart-container"><h3>AR Flat Yield: Units vs Dollars</h3><div class="subtitle">The gap between these lines shows the high-value item problem</div><div id="flatYieldChart" class="plotly-chart"></div></div>';
-  html+='<div class="chart-container"><h3>AR Opportunity COGs Trend</h3><div class="subtitle">Positive = profitable, declining = margin compression</div><div id="oppCogsChart" class="plotly-chart"></div></div></div>';
-
-  // Explanation
-  html+=`<div class="chart-container" style="border-left:4px solid var(--orange)">
-    <h3>⚠️ What the Divergence Means</h3>
-    <div style="font-size:13px;color:var(--text2);line-height:1.7;margin-top:8px">
-      <p>The gap between unit-based yield and dollar-based yield is <strong style="color:${latestGap>firstGap?'var(--red)':'var(--green)'}">${latestGap>firstGap?'widening':'narrowing'}</strong>. 
-      This means higher-value items are ${latestGap>firstGap?'increasingly underperforming':'improving relative to'} compared to lower-value items.</p>
-      <p style="margin-top:8px"><strong>Dollar PtP has declined ${fmt(Math.abs(ptpDecline),1)}%</strong> over the reporting period. At the current rate, 
-      ${latestArPtp>1.0?'the program will breach breakeven if the trend continues.':'the program is already below breakeven in dollar terms.'}</p>
-      <p style="margin-top:8px"><strong>Action Required:</strong> Pull the top 20 ASINs by dollar value with PtP below 1.0 to identify which specific high-value items are driving this divergence.</p>
-    </div>
-  </div>`;
-
-  el.innerHTML=html;
-
-  Plotly.newPlot('divergeChart',[
-    {x:dates,y:arPtpDollar,name:'AR Dollar PtP',type:'scatter',mode:'lines+markers',line:{color:'#E74C3C',width:3},marker:{size:8}},
-    {x:dates,y:crPtpDollar,name:'CR Dollar PtP',type:'scatter',mode:'lines+markers',line:{color:'#F39C12',width:2},marker:{size:6}},
-  ],{...plotlyLayout,yaxis:{...plotlyLayout.yaxis,title:'Yield PtP ($)',range:[Math.min(...arPtpDollar,...crPtpDollar)*0.99,Math.max(...arPtpDollar,...crPtpDollar)*1.01]},shapes:[{type:'line',x0:dates[0],x1:dates[dates.length-1],y0:1.0,y1:1.0,line:{color:'#E74C3C',width:1,dash:'dash'}}]},plotlyConfig);
-
-  Plotly.newPlot('flatYieldChart',[
-    {x:dates,y:arFlatUnits,name:'Flat Yield (Units)',type:'scatter',mode:'lines+markers',line:{color:'#4A90E2',width:3},marker:{size:8},fill:'tonexty',fillcolor:'rgba(74,144,226,0.05)'},
-    {x:dates,y:arFlatDollars,name:'Flat Yield ($)',type:'scatter',mode:'lines+markers',line:{color:'#E74C3C',width:3},marker:{size:8}},
-  ],{...plotlyLayout,yaxis:{...plotlyLayout.yaxis,title:'Flat Yield'}},plotlyConfig);
-
-  Plotly.newPlot('oppCogsChart',[
-    {x:dates,y:arOppCogs,name:'AR Opp COGs',type:'bar',marker:{color:arOppCogs.map(v=>v>=0?'rgba(46,204,113,0.6)':'rgba(231,76,60,0.6)')},text:arOppCogs.map(v=>fmtMoney(v)),textposition:'outside',textfont:{size:10,color:'#8899AA'}}
-  ],{...plotlyLayout,yaxis:{...plotlyLayout.yaxis,title:'Opp COGs ($)'}},plotlyConfig);
-}
-
-// ═══════════════════════════════════════════
-// TAB 6: ACTION PRIORITIZER
-// ═══════════════════════════════════════════
-function renderActions(){
-  const el=document.getElementById('actionsContent');
-  const hasData=DATA.glPerformance||DATA.associateWeekly||DATA.overallPerformance;
-  if(!hasData){el.innerHTML='<div class="empty-state"><div class="icon">🎯</div><h3>Upload Data for Action Prioritizer</h3></div>';return}
-
-  let html='';
-
-  // GL Actions
-  if(DATA.glPerformance){
-    const below=DATA.glPerformance.filter(r=>parseFloat(r['Yield PtP'])<1.0&&parseInt(r['Units'])>0).sort((a,b)=>parseFloat(a['Yield PtP'])-parseFloat(b['Yield PtP']));
-    const critical=below.filter(r=>parseFloat(r['Yield PtP'])<0.9);
-    const belowTarget=below.filter(r=>parseFloat(r['Yield PtP'])>=0.9);
-
-    html+='<div class="section-title">🏷️ GL Category Actions</div>';
-    critical.forEach(r=>{
-      const ptp=parseFloat(r['Yield PtP']);
-      const units=parseInt(r['Units']);
-      const action=ptp<0.85?'GATE — Evaluate removal from refurb program':'PROCESS REVIEW — Investigate root cause';
-      html+=`<div class="action-card gate"><div class="action-header"><div class="action-title">🚫 ${r['GL Product Group Description']}</div>${ptpBadge(ptp)}</div><div class="action-detail"><strong>Action:</strong> ${action}<br><strong>Impact:</strong> ${units.toLocaleString()} units at ${fmt(ptp,4)} PtP — ${fmtPct(r['Yield'])} actual vs ${fmtPct(r['Expected Yield'])} expected<br><strong>Priority:</strong> 🔴 Critical — significant dollar drag on program</div></div>`;
-    });
-    belowTarget.forEach(r=>{
-      const ptp=parseFloat(r['Yield PtP']);
-      const units=parseInt(r['Units']);
-      const nearBreakeven=ptp>=0.98;
-      const action=nearBreakeven?'QUICK WIN — Only '+(((1.0-ptp)*100).toFixed(1))+'% from breakeven':'INVESTIGATE — Analyze sub-category and defect patterns';
-      html+=`<div class="action-card ${nearBreakeven?'monitor':'investigate'}"><div class="action-header"><div class="action-title">${nearBreakeven?'👁️':'🔍'} ${r['GL Product Group Description']}</div>${ptpBadge(ptp)}</div><div class="action-detail"><strong>Action:</strong> ${action}<br><strong>Impact:</strong> ${units.toLocaleString()} units — ${nearBreakeven?'high ROI, small improvement needed':'moderate priority'}</div></div>`;
-    });
-  }
-
-  // Associate Actions
-  if(DATA.associateWeekly){
-    const weeks=[...new Set(DATA.associateWeekly.map(r=>r.refurb_end_time))].sort().reverse();
-    const latestWeek=weeks[0];
-    const latestData=DATA.associateWeekly.filter(r=>r.refurb_end_time===latestWeek&&r['Refurb Units Tot Associate']>10&&parseFloat(r['Refurb Ptp'])>0&&parseFloat(r['Refurb Ptp'])<1.0);
-    const sortedAssoc=[...latestData].sort((a,b)=>{
-      const aImpact=(1-parseFloat(a['Refurb Ptp']))*parseInt(a['Refurb Units Tot Associate']);
-      const bImpact=(1-parseFloat(b['Refurb Ptp']))*parseInt(b['Refurb Units Tot Associate']);
-      return bImpact-aImpact;
-    });
-
-    if(sortedAssoc.length>0){
-      html+='<div class="section-title">👤 Associate Coaching Actions (Week of '+latestWeek.split(' ')[0]+')</div>';
-      sortedAssoc.slice(0,15).forEach(r=>{
-        const ptp=parseFloat(r['Refurb Ptp']);
-        const units=parseInt(r['Refurb Units Tot Associate']);
-        const impact=((1-ptp)*units).toFixed(0);
-        const severity=ptp<0.7?'gate':ptp<0.9?'investigate':'monitor';
-        const action=ptp<0.7?'IMMEDIATE 1:1 — Critical underperformance':ptp<0.9?'COACHING PLAN — Pair with top performer':'MONITOR — Slight below target';
-        // Check trend
-        const history=DATA.associateWeekly.filter(h=>h.Associate===r.Associate&&parseFloat(h['Refurb Ptp'])>0).sort((a,b)=>new Date(a.refurb_end_time)-new Date(b.refurb_end_time));
-        const trend=history.length>=2?(parseFloat(history[history.length-1]['Refurb Ptp'])<parseFloat(history[history.length-2]['Refurb Ptp'])?'📉 Declining':'📈 Improving'):'—';
-
-        html+=`<div class="action-card ${severity}"><div class="action-header"><div class="action-title">${ptp<0.7?'🚨':ptp<0.9?'⚠️':'👁️'} ${r.Associate} → Manager: ${r.Manager}</div>${ptpBadge(ptp)}</div><div class="action-detail"><strong>Action:</strong> ${action}<br><strong>Impact:</strong> ${units} units × ${fmt(1-ptp,4)} gap = ~${impact} unit-equivalents of drag<br><strong>Trend:</strong> ${trend} | <strong>Success Rate:</strong> ${fmtPct(r['Success Rate'])}</div></div>`;
-      });
-    }
-  }
-
-  // Impact Model
-  if(DATA.glPerformance&&DATA.siteWeekly){
-    const siteLatest=[...DATA.siteWeekly].sort((a,b)=>new Date(b.refurb_end_time)-new Date(a.refurb_end_time))[0];
-    const currentPtp=parseFloat(siteLatest['Refurb Ptp %']);
-    html+=`<div class="section-title">📊 Impact Modeling</div>
-    <div class="chart-container" style="border-left:4px solid var(--green)">
-      <h3>Projected Impact of Actions</h3>
-      <div style="font-size:13px;color:var(--text2);line-height:1.8;margin-top:8px">
-        <p><strong>Current Site PtP:</strong> <span style="color:${currentPtp>=1.0?'var(--green)':'var(--red)'}"> ${fmt(currentPtp,4)}</span></p>
-        <p><strong>If GL categories below 0.90 are gated:</strong> Removes worst-performing volume, estimated PtP improvement of +0.02–0.04</p>
-        <p><strong>If bottom 4 associates improve to 0.95:</strong> Estimated site PtP improvement of +0.01–0.03</p>
-        <p><strong>Combined projected PtP:</strong> <span style="color:var(--green)">~${fmt(currentPtp+0.04,4)} – ${fmt(currentPtp+0.07,4)}</span></p>
-      </div>
-    </div>`;
-  }
-
-  if(!html)html='<div class="empty-state"><div class="icon">🎯</div><h3>Upload more data for complete action analysis</h3></div>';
-  el.innerHTML=html;
-}
-</script>
+</div><!-- end main -->
 
 <!-- DATA SOURCES & ASSUMPTIONS -->
-<details style="clear:both;display:block;margin:30px auto;max-width:900px;background:#FFF3CD;border-left:5px solid #FF9800;border-radius:8px;font-family:system-ui;box-shadow:0 2px 8px rgba(0,0,0,0.1)">
-<summary style="padding:20px;cursor:pointer;list-style:none;user-select:none;display:flex;align-items:center;justify-content:space-between">
-<div style="display:flex;align-items:center"><span style="font-size:22px;margin-right:10px">📋</span><strong style="font-size:16px;color:#2C3744">DATA SOURCES & ASSUMPTIONS</strong></div>
-<span style="font-size:20px;color:#666;font-weight:normal">(Click to expand)</span>
+<details style="position:fixed;bottom:15px;left:255px;right:15px;z-index:50;background:#FFF3CD;border-left:5px solid #FF9800;border-radius:8px;font-family:system-ui;box-shadow:0 2px 12px rgba(0,0,0,0.3);max-width:600px">
+<summary style="padding:12px 16px;cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between">
+<div style="display:flex;align-items:center"><span style="font-size:16px;margin-right:8px">📋</span><strong style="font-size:13px;color:#2C3744">DATA SOURCES & ASSUMPTIONS</strong></div>
+<span style="font-size:14px;color:#666">(Click)</span>
 </summary>
-<div style="padding:0 20px 20px 20px;font-size:13px;color:#2C3744;line-height:1.6">
-<strong>Source:</strong> User-uploaded CSV files from Amazon QuickSight exports<br>
-<strong>Data Verification:</strong>
-<ul style="margin:8px 0;padding-left:20px">
-<li>✅ All visualizations render from uploaded CSV data — no hardcoded values</li>
-<li>✅ File type auto-detection based on column headers</li>
-<li>✅ Data persists in browser localStorage between sessions</li>
-<li>⚠️ <strong>Assumption:</strong> PtP ≥ 1.0 treated as breakeven threshold</li>
-<li>⚠️ <strong>Assumption:</strong> Breakeven breach projection uses linear regression on available data points</li>
-<li>⚠️ <strong>Assumption:</strong> Manager rollup uses volume-weighted PtP averaging</li>
-<li>⚠️ <strong>Assumption:</strong> GL category price tiers not available in source data — dollar impact estimates use yield gap × units only</li>
+<div style="padding:0 16px 16px;font-size:12px;color:#2C3744;line-height:1.5">
+<strong>Sources:</strong> 6 CSV files from existing QuickSight dashboards<br>
+<ul style="margin:6px 0;padding-left:18px">
+<li>✅ 12-week yield trend from Yield_PTP_COGS_Weekly</li>
+<li>✅ 35 GL categories from Yield_Performance_by_GL</li>
+<li>✅ 5-week AR/CR comparison from Overall_Performance</li>
+<li>✅ PHX6 site metrics from Weekly_Aggregate_Performance</li>
+<li>✅ Associate data from Weekly_Associate_Aggregate</li>
+<li>✅ Daily PtP from Yield_PtP_Performance</li>
+<li>⚠️ WE 3/15 may be partial week (Cost Unsellable $45K vs typical $300K+)</li>
+<li>⚠️ GL price tiers estimated from category knowledge — verify with ASIN catalog</li>
+<li>⚠️ Redshift table specs from UTR Quality Agent technical specification</li>
 </ul>
 </div>
 </details>
 
 <div id="viz-controls" style="position:fixed;top:15px;right:15px;z-index:9999;display:flex;gap:8px">
-<button id="export-html-btn" style="background:#2ECC71;border:2px solid #27AE60;color:white;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.1);transition:all 0.2s" title="Export as HTML" onmouseover="this.style.background='#27AE60';this.style.transform='translateY(-2px)'" onmouseout="this.style.background='#2ECC71';this.style.transform='translateY(0)'">💾 Export</button>
-<button id="fs-btn" style="background:white;border:2px solid #4A90E2;color:#4A90E2;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.1);transition:all 0.2s" title="Fullscreen" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">⛶</button>
+<button id="export-html-btn" style="background:#2ECC71;border:2px solid #27AE60;color:white;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.2)" onmouseover="this.style.background='#27AE60'" onmouseout="this.style.background='#2ECC71'">💾 Export</button>
+<button id="fs-btn" style="background:var(--card);border:2px solid var(--blue);color:var(--blue);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.2)">⛶</button>
 </div>
+
 <script>
+// TAB NAVIGATION
+function showTab(id){
+document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+document.getElementById('tab-'+id).classList.add('active');
+event.currentTarget.classList.add('active');
+window.dispatchEvent(new Event('resize'));
+}
+
+function toggleCollapse(el){
+var content=el.nextElementSibling;
+content.classList.toggle('open');
+el.querySelector('span:last-child').textContent=content.classList.contains('open')?'▲':'▼';
+}
+
+var plotBg='#1a1d27',plotPaper='#1a1d27',plotGrid='#2d3140',plotFont={color:'#8b8fa3',family:'Segoe UI,system-ui'},plotLayout={plot_bgcolor:plotBg,paper_bgcolor:plotPaper,font:plotFont,margin:{l:60,r:30,t:40,b:50},xaxis:{gridcolor:plotGrid,zerolinecolor:plotGrid},yaxis:{gridcolor:plotGrid,zerolinecolor:plotGrid}};
+var plotConfig={responsive:true,displaylogo:false,modeBarButtonsToRemove:['lasso2d','select2d']};
+
+// CHART 1: 12-Week Yield Trend
 (function(){
-document.getElementById('export-html-btn').addEventListener('click',function(){try{var htmlClone=document.documentElement.cloneNode(true);var assumptions=htmlClone.querySelector('details[style*="FFF3CD"]');if(assumptions)assumptions.remove();var htmlContent='<!DOCTYPE html>\n'+htmlClone.outerHTML;var blob=new Blob([htmlContent],{type:'text/html;charset=utf-8'});var timestamp=new Date().toISOString().slice(0,10);var filename='ar_performance_dashboard_'+timestamp+'.html';var link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=filename;document.body.appendChild(link);link.click();document.body.removeChild(link);URL.revokeObjectURL(link.href);var btn=this;var originalText=btn.innerHTML;btn.innerHTML='✓ Saved!';setTimeout(function(){btn.innerHTML=originalText},2000)}catch(err){console.error('Export error:',err);alert('Export failed: '+err.message)}});
-document.getElementById('fs-btn').addEventListener('click',function(){if(!document.fullscreenElement){document.documentElement.requestFullscreen().catch(e=>console.error(e))}else{document.exitFullscreen()}});
-document.addEventListener('fullscreenchange',function(){document.getElementById('fs-btn').textContent=document.fullscreenElement?'✕':'⛶'});
+var weeks=['12/28','1/4','1/11','1/18','1/25','2/1','2/8','2/15','2/22','3/1','3/8','3/15'];
+var ptp=[1.0694,1.0606,1.0778,1.0537,1.0495,1.0489,1.057,1.06,1.0536,1.0404,1.0417,1.0232];
+var cost=[83789,312854,318939,365989,342874,362196,284371,304167,301242,324068,303617,45460];
+Plotly.newPlot('chart-yield-trend',[
+{x:weeks,y:ptp,name:'Yield PtP',type:'scatter',mode:'lines+markers',line:{color:'#4a90e2',width:3},marker:{size:8}},
+{x:weeks,y:cost.map(c=>c/1000),name:'Cost Unsellable ($K)',type:'bar',yaxis:'y2',marker:{color:'rgba(231,76,60,0.3)'},hovertemplate:'$%{y:.0f}K'}
+],Object.assign({},plotLayout,{
+title:{text:'Yield PtP & Cost Unsellable (12 Weeks)',font:{size:14,color:'#e2e4e9'}},
+yaxis:{title:'Yield PtP',gridcolor:plotGrid,range:[1.0,1.09]},
+yaxis2:{title:'Cost Unsellable ($K)',overlaying:'y',side:'right',gridcolor:'transparent',range:[0,400]},
+shapes:[{type:'line',x0:weeks[0],x1:weeks[11],y0:1.0,y1:1.0,line:{color:'#e74c3c',width:2,dash:'dash'}}],
+annotations:[{x:'3/15',y:1.0232,text:'1.0232',showarrow:true,arrowhead:2,ax:40,ay:-30,font:{color:'#f39c12',size:12}}],
+showlegend:true,legend:{x:0,y:1.15,orientation:'h'}
+}),plotConfig);
 })();
+
+// CHART 2: Daily PtP
+(function(){
+var days=['3/8','3/9','3/10','3/11','3/12','3/13','3/14','3/15'];
+var vals=[1.0935,1.0485,1.008,1.0654,1.0698,0.9927,1.0171,1.0195];
+var colors=vals.map(v=>v>=1.0?'#2ecc71':'#e74c3c');
+Plotly.newPlot('chart-daily-ptp',[{x:days,y:vals,type:'bar',marker:{color:colors},text:vals.map(v=>v.toFixed(4)),textposition:'outside',textfont:{color:'#e2e4e9',size:11}}],
+Object.assign({},plotLayout,{title:{text:'Daily AR Yield PtP',font:{size:14,color:'#e2e4e9'}},yaxis:{range:[0.97,1.12],gridcolor:plotGrid},shapes:[{type:'line',x0:-0.5,x1:7.5,y0:1.0,y1:1.0,line:{color:'#e74c3c',width:2,dash:'dash'}}]}),plotConfig);
+})();
+
+// CHART 3: GL Bar Chart
+(function(){
+var gl=[{n:'gl_music',p:0.7197,u:1719},{n:'gl_dvd',p:0.8187,u:883},{n:'gl_drugstore',p:0.8765,u:6220},{n:'gl_apparel',p:0.9168,u:1155},{n:'gl_beauty',p:0.9468,u:3449},{n:'gl_toy',p:0.9503,u:23293},{n:'gl_personal_care',p:0.5503,u:5},{n:'gl_camera',p:0.9645,u:4003},{n:'gl_wireless',p:0.9885,u:19399},{n:'gl_luxury_beauty',p:1.0,u:1},{n:'gl_sports',p:1.0127,u:9637},{n:'gl_tools',p:1.0169,u:7667},{n:'gl_automotive',p:1.0171,u:15899},{n:'gl_shoes',p:1.0179,u:21884},{n:'gl_major_appliances',p:1.0194,u:1611},{n:'gl_home_improvement',p:1.0292,u:34122},{n:'gl_musical_instruments',p:1.0316,u:2714},{n:'gl_office_product',p:1.0389,u:9055},{n:'gl_watch',p:1.042,u:575},{n:'gl_baby_product',p:1.0465,u:4208},{n:'gl_outdoors',p:1.0474,u:11685},{n:'gl_home_entertainment',p:1.0548,u:556},{n:'gl_lawn_and_garden',p:1.0617,u:6673},{n:'gl_biss',p:1.0638,u:2959},{n:'gl_kitchen',p:1.0712,u:43756},{n:'gl_luggage',p:1.0745,u:1756},{n:'gl_pet_products',p:1.0871,u:9388},{n:'gl_electronics',p:1.0921,u:11377},{n:'gl_home',p:1.1052,u:41101},{n:'gl_pc',p:1.1029,u:17603},{n:'gl_book',p:1.1116,u:4659},{n:'gl_furniture',p:1.1745,u:1454},{n:'gl_jewelry',p:1.1753,u:895},{n:'gl_video_games',p:1.2037,u:7272},{n:'gl_grocery',p:1.3585,u:1}];
+gl.sort((a,b)=>a.p-b.p);
+var names=gl.map(g=>g.n),ptps=gl.map(g=>g.p),units=gl.map(g=>g.u);
+var colors=ptps.map(p=>p>=1.05?'#2ecc71':p>=1.0?'#f39c12':p>=0.9?'#e67e22':'#e74c3c');
+Plotly.newPlot('chart-gl-bar',[{y:names,x:ptps,type:'bar',orientation:'h',marker:{color:colors},text:ptps.map(p=>p.toFixed(4)),textposition:'outside',textfont:{size:10,color:'#e2e4e9'},customdata:units,hovertemplate:'%{y}<br>PtP: %{x:.4f}<br>Units: %{customdata:,}<extra></extra>'}],
+Object.assign({},plotLayout,{margin:{l:160,r:60,t:30,b:40},xaxis:{range:[0.5,1.4],gridcolor:plotGrid},yaxis:{automargin:true},shapes:[{type:'line',x0:1.0,x1:1.0,y0:-0.5,y1:gl.length-0.5,line:{color:'#e74c3c',width:2,dash:'dash'}}]}),plotConfig);
+})();
+
+// CHART 4: GL Bubble
+(function(){
+var gl=[{n:'gl_kitchen',p:1.0712,u:43756},{n:'gl_home',p:1.1052,u:41101},{n:'gl_home_improvement',p:1.0292,u:34122},{n:'gl_toy',p:0.9503,u:23293},{n:'gl_shoes',p:1.0179,u:21884},{n:'gl_wireless',p:0.9885,u:19399},{n:'gl_pc',p:1.1029,u:17603},{n:'gl_automotive',p:1.0171,u:15899},{n:'gl_outdoors',p:1.0474,u:11685},{n:'gl_electronics',p:1.0921,u:11377},{n:'gl_sports',p:1.0127,u:9637},{n:'gl_pet_products',p:1.0871,u:9388},{n:'gl_office_product',p:1.0389,u:9055},{n:'gl_tools',p:1.0169,u:7667},{n:'gl_video_games',p:1.2037,u:7272},{n:'gl_lawn_and_garden',p:1.0617,u:6673},{n:'gl_drugstore',p:0.8765,u:6220},{n:'gl_book',p:1.1116,u:4659},{n:'gl_baby_product',p:1.0465,u:4208},{n:'gl_camera',p:0.9645,u:4003},{n:'gl_beauty',p:0.9468,u:3449}];
+var above=gl.filter(g=>g.p>=1.0),below=gl.filter(g=>g.p<1.0);
+Plotly.newPlot('chart-gl-bubble',[
+{x:above.map(g=>g.u),y:above.map(g=>g.p),text:above.map(g=>g.n),mode:'markers+text',textposition:'top center',textfont:{size:9,color:'#8b8fa3'},marker:{size:above.map(g=>Math.sqrt(g.u)/4),color:'rgba(46,204,113,0.6)',line:{color:'#2ecc71',width:1}},name:'Above 1.0',hovertemplate:'%{text}<br>PtP: %{y:.4f}<br>Units: %{x:,}<extra></extra>'},
+{x:below.map(g=>g.u),y:below.map(g=>g.p),text:below.map(g=>g.n),mode:'markers+text',textposition:'top center',textfont:{size:9,color:'#e74c3c'},marker:{size:below.map(g=>Math.sqrt(g.u)/4),color:'rgba(231,76,60,0.6)',line:{color:'#e74c3c',width:1}},name:'Below 1.0',hovertemplate:'%{text}<br>PtP: %{y:.4f}<br>Units: %{x:,}<extra></extra>'}
+],Object.assign({},plotLayout,{xaxis:{title:'Units',gridcolor:plotGrid},yaxis:{title:'Yield PtP',gridcolor:plotGrid,range:[0.85,1.25]},shapes:[{type:'line',x0:0,x1:50000,y0:1.0,y1:1.0,line:{color:'#e74c3c',width:2,dash:'dash'}}],showlegend:true,legend:{x:0.7,y:0.95}}),plotConfig);
+})();
+
+// CHART 5: GL Impact
+(function(){
+var cats=['gl_toy','gl_wireless','gl_drugstore','gl_camera','gl_beauty','gl_dvd','gl_music','gl_apparel'];
+var impacts=[-743,-224,-787,-122,-160,-74,-287,-59];
+var posC=['gl_home','gl_kitchen','gl_pc','gl_electronics','gl_video_games','gl_pet_products'];
+var posI=[4320,3210,3560,1740,942,508];
+Plotly.newPlot('chart-gl-impact',[
+{y:cats,x:impacts,type:'bar',orientation:'h',name:'Loss Drivers',marker:{color:'#e74c3c'},hovertemplate:'%{y}: %{x:,.0f} impact<extra></extra>'},
+{y:posC,x:posI,type:'bar',orientation:'h',name:'Profit Drivers',marker:{color:'#2ecc71'},hovertemplate:'%{y}: +%{x:,.0f} impact<extra></extra>'}
+],Object.assign({},plotLayout,{margin:{l:130,r:30,t:30,b:40},barmode:'relative',showlegend:true,legend:{x:0.6,y:0.95}}),plotConfig);
+})();
+
+// GL TABLE
+(function(){
+var gl=[{n:'gl_kitchen',u:43756,ya:0.7331,ye:0.6843,p:1.0712},{n:'gl_home',u:41101,ya:0.6823,ye:0.6173,p:1.1052},{n:'gl_home_improvement',u:34122,ya:0.7789,ye:0.7568,p:1.0292},{n:'gl_toy',u:23293,ya:0.6109,ye:0.6428,p:0.9503},{n:'gl_shoes',u:21884,ya:0.678,ye:0.666,p:1.0179},{n:'gl_wireless',u:19399,ya:0.8286,ye:0.8382,p:0.9885},{n:'gl_pc',u:17603,ya:0.8704,ye:0.7891,p:1.1029},{n:'gl_automotive',u:15899,ya:0.7465,ye:0.7339,p:1.0171},{n:'gl_outdoors',u:11685,ya:0.7523,ye:0.7182,p:1.0474},{n:'gl_electronics',u:11377,ya:0.8069,ye:0.7388,p:1.0921},{n:'gl_sports',u:9637,ya:0.7674,ye:0.7577,p:1.0127},{n:'gl_pet_products',u:9388,ya:0.6724,ye:0.6185,p:1.0871},{n:'gl_office_product',u:9055,ya:0.7401,ye:0.7123,p:1.0389},{n:'gl_tools',u:7667,ya:0.7515,ye:0.739,p:1.0169},{n:'gl_video_games',u:7272,ya:0.8516,ye:0.7074,p:1.2037},{n:'gl_lawn_and_garden',u:6673,ya:0.7519,ye:0.7082,p:1.0617},{n:'gl_drugstore',u:6220,ya:0.5287,ye:0.6031,p:0.8765},{n:'gl_book',u:4659,ya:0.8013,ye:0.7208,p:1.1116},{n:'gl_baby_product',u:4208,ya:0.6498,ye:0.6209,p:1.0465},{n:'gl_camera',u:4003,ya:0.8266,ye:0.857,p:0.9645},{n:'gl_beauty',u:3449,ya:0.5616,ye:0.5931,p:0.9468},{n:'gl_biss',u:2959,ya:0.7781,ye:0.7314,p:1.0638},{n:'gl_musical_instruments',u:2714,ya:0.8069,ye:0.7821,p:1.0316},{n:'gl_luggage',u:1756,ya:0.8705,ye:0.8101,p:1.0745},{n:'gl_music',u:1719,ya:0.4276,ye:0.5941,p:0.7197},{n:'gl_major_appliances',u:1611,ya:0.7495,ye:0.7352,p:1.0194},{n:'gl_furniture',u:1454,ya:0.8617,ye:0.7336,p:1.1745},{n:'gl_apparel',u:1155,ya:0.5601,ye:0.6109,p:0.9168},{n:'gl_jewelry',u:895,ya:0.7364,ye:0.6265,p:1.1753},{n:'gl_dvd',u:883,ya:0.5409,ye:0.6606,p:0.8187},{n:'gl_watch',u:575,ya:0.8218,ye:0.7886,p:1.042},{n:'gl_home_entertainment',u:556,ya:0.8184,ye:0.7758,p:1.0548}];
+gl.sort((a,b)=>b.u-a.u);
+var tbody=document.getElementById('gl-table-body');
+gl.forEach(function(g){
+var status=g.p>=1.05?'<span class="badge badge-green">Strong</span>':g.p>=1.0?'<span class="badge badge-yellow">At Target</span>':g.p>=0.9?'<span class="badge badge-yellow">Below</span>':'<span class="badge badge-red">Critical</span>';
+var gap=((g.ya-g.ye)*100).toFixed(2);
+var gapColor=gap>=0?'var(--green)':'var(--red)';
+var row=document.createElement('tr');
+row.innerHTML=status+'<td>'+g.n+'</td><td>'+g.u.toLocaleString()+'</td><td>'+(g.ya*100).toFixed(2)+'%</td><td>'+(g.ye*100).toFixed(2)+'%</td><td style="color:'+(g.p>=1.0?'var(--green)':'var(--red)')+'"><strong>'+g.p.toFixed(4)+'</strong></td><td style="color:'+gapColor+'">'+gap+'pp</td>';
+tbody.appendChild(row);
+});
+})();
+
+// CHART 6: Site Trend
+(function(){
+var weeks=['2/15','2/22','3/1','3/8','3/15'];
+var ptp=[0.9261,1.0016,0.9492,1.0195,0.9919];
+var sr=[0.6982,0.7551,0.717,0.7731,0.7539];
+var hc=[0.9884,1.1042,1.0498,1.1188,1.1078];
+Plotly.newPlot('chart-site-trend',[
+{x:weeks,y:ptp,name:'Refurb PtP',type:'scatter',mode:'lines+markers',line:{color:'#4a90e2',width:3},marker:{size:8}},
+{x:weeks,y:sr,name:'Success Rate',type:'scatter',mode:'lines+markers',line:{color:'#2ecc71',width:2},marker:{size:6}},
+{x:weeks,y:hc,name:'HC Clean PtP',type:'scatter',mode:'lines+markers',line:{color:'#9b59b6',width:2,dash:'dot'},marker:{size:6}}
+],Object.assign({},plotLayout,{yaxis:{range:[0.65,1.2],gridcolor:plotGrid},shapes:[{type:'line',x0:weeks[0],x1:weeks[4],y0:1.0,y1:1.0,line:{color:'#e74c3c',width:1.5,dash:'dash'}}],showlegend:true,legend:{x:0,y:1.15,orientation:'h'}}),plotConfig);
+})();
+
+// CHART 7: Associate Scatter
+(function(){
+var assocs=[{n:'hagracha',p:1.2686,u:342,s:0.8802},{n:'gccordov',p:1.2455,u:339,s:0.8675},{n:'ricarcor',p:1.3319,u:260,s:0.9382},{n:'deoramir',p:0.7504,u:212,s:0.5231},{n:'durajust',p:0.8292,u:196,s:0.5852},{n:'geoffspe',p:1.2235,u:189,s:0.8561},{n:'gshermac',p:0.8881,u:151,s:0.6235},{n:'mgmuniz',p:1.2645,u:146,s:0.8891},{n:'lisgalar',p:1.0035,u:146,s:0.6945},{n:'vanezzaa',p:1.176,u:134,s:0.8155},{n:'novemy',p:1.0394,u:132,s:0.7234},{n:'beyoyrob',p:0.5875,u:77,s:0.424},{n:'ojadmitc',p:1.115,u:49,s:0.765},{n:'jaaronma',p:0.5946,u:46,s:0.4109},{n:'priscdur',p:1.1908,u:43,s:0.8319},{n:'caalannj',p:1.3716,u:39,s:0.9363}];
+var above=assocs.filter(a=>a.p>=1.0),below=assocs.filter(a=>a.p<1.0);
+Plotly.newPlot('chart-assoc-scatter',[
+{x:above.map(a=>a.u),y:above.map(a=>a.p),text:above.map(a=>a.n),mode:'markers+text',textposition:'top center',textfont:{size:9,color:'#8b8fa3'},marker:{size:above.map(a=>a.s*30),color:'rgba(46,204,113,0.6)',line:{color:'#2ecc71',width:1}},name:'Above 1.0',hovertemplate:'%{text}<br>PtP: %{y:.4f}<br>Units: %{x}<extra></extra>'},
+{x:below.map(a=>a.u),y:below.map(a=>a.p),text:below.map(a=>a.n),mode:'markers+text',textposition:'top center',textfont:{size:9,color:'#e74c3c'},marker:{size:below.map(a=>a.s*30),color:'rgba(231,76,60,0.6)',line:{color:'#e74c3c',width:1}},name:'Below 1.0',hovertemplate:'%{text}<br>PtP: %{y:.4f}<br>Units: %{x}<extra></extra>'}
+],Object.assign({},plotLayout,{xaxis:{title:'Units (WE 3/15)',gridcolor:plotGrid},yaxis:{title:'Yield PtP',gridcolor:plotGrid,range:[0.5,1.45]},shapes:[{type:'line',x0:0,x1:360,y0:1.0,y1:1.0,line:{color:'#e74c3c',width:2,dash:'dash'}}],showlegend:true,legend:{x:0.7,y:0.15}}),plotConfig);
+})();
+
+// CHART 8: deoramir trend
+(function(){
+var weeks=['2/15','2/22','3/1','3/8','3/15'];
+var ptp=[1.0358,1.0115,0.9758,0.9323,0.7504];
+var colors=ptp.map(p=>p>=1.0?'#2ecc71':'#e74c3c');
+Plotly.newPlot('chart-deoramir',[{x:weeks,y:ptp,type:'bar',marker:{color:colors},text:ptp.map(p=>p.toFixed(4)),textposition:'outside',textfont:{color:'#e2e4e9',size:12}}],
+Object.assign({},plotLayout,{yaxis:{range:[0.6,1.15],gridcolor:plotGrid},shapes:[{type:'line',x0:-0.5,x1:4.5,y0:1.0,y1:1.0,line:{color:'#e74c3c',width:2,dash:'dash'}}],annotations:[{x:'3/15',y:0.7504,text:'▼ 27.5% decline',showarrow:true,arrowhead:2,ax:0,ay:-35,font:{color:'#e74c3c',size:12}}]}),plotConfig);
+})();
+
+// CHART 9: Manager rollup
+(function(){
+var mgrs=['mrmaurer','jcaro','delajojo','yhermosi','wongphas','thakksha','domjsan','diepsanc','xjacosta','zrittenh','aaalmasr','jerecurm'];
+var ptps=[1.15,1.27,1.22,1.26,1.18,1.04,1.24,0.75,0.83,0.89,0.59,1.19];
+var units=[791,342,189,146,134,132,88,212,196,166,78,43];
+var colors=ptps.map(p=>p>=1.0?'#2ecc71':p>=0.9?'#f39c12':'#e74c3c');
+Plotly.newPlot('chart-manager',[{x:mgrs,y:ptps,type:'bar',marker:{color:colors},text:ptps.map(p=>p.toFixed(2)),textposition:'outside',textfont:{color:'#e2e4e9'},customdata:units,hovertemplate:'Manager: %{x}<br>Weighted PtP: %{y:.4f}<br>Total Units: %{customdata}<extra></extra>'}],
+Object.assign({},plotLayout,{yaxis:{range:[0.4,1.4],gridcolor:plotGrid},shapes:[{type:'line',x0:-0.5,x1:11.5,y0:1.0,y1:1.0,line:{color:'#e74c3c',width:2,dash:'dash'}}]}),plotConfig);
+})();
+
+// CHART 10: Divergence
+(function(){
+var weeks=['2/15','2/22','3/1','3/8','3/15'];
+var dollarPtp=[1.0610,1.0548,1.0411,1.0426,1.0207];
+var flatU=[0.7313,0.7297,0.7434,0.7268,0.7222];
+var flatD=[0.7602,0.7497,0.7611,0.7527,0.7348];
+Plotly.newPlot('chart-divergence',[
+{x:weeks,y:flatD,name:'Flat Yield ($)',type:'scatter',mode:'lines+markers',line:{color:'#e74c3c',width:3},marker:{size:8},fill:'tonexty',fillcolor:'rgba(231,76,60,0.08)'},
+{x:weeks,y:flatU,name:'Flat Yield (Units)',type:'scatter',mode:'lines+markers',line:{color:'#4a90e2',width:3},marker:{size:8}},
+{x:weeks,y:dollarPtp,name:'AR PtP ($)',type:'scatter',mode:'lines+markers',line:{color:'#f39c12',width:2,dash:'dot'},marker:{size:6},yaxis:'y2'}
+],Object.assign({},plotLayout,{
+yaxis:{title:'Flat Yield',range:[0.7,0.78],gridcolor:plotGrid},
+yaxis2:{title:'AR PtP ($)',overlaying:'y',side:'right',range:[1.0,1.08],gridcolor:'transparent'},
+showlegend:true,legend:{x:0,y:1.15,orientation:'h'},
+annotations:[{x:'3/15',y:0.7348,text:'Gap narrowing<br>(bad signal)',showarrow:true,arrowhead:2,ax:60,ay:-40,font:{color:'#e74c3c',size:11}}]
+}),plotConfig);
+})();
+
+// CHART 11: Flat Yield comparison
+(function(){
+var weeks=['2/15','2/22','3/1','3/8','3/15'];
+var fu=[73.13,72.97,74.34,72.68,72.22];
+var fd=[76.02,74.97,76.11,75.27,73.48];
+Plotly.newPlot('chart-flat-yield',[
+{x:weeks,y:fu,name:'Flat Yield (Units %)',type:'scatter',mode:'lines+markers',line:{color:'#4a90e2',width:3},marker:{size:8}},
+{x:weeks,y:fd,name:'Flat Yield ($ %)',type:'scatter',mode:'lines+markers',line:{color:'#e74c3c',width:3},marker:{size:8}}
+],Object.assign({},plotLayout,{yaxis:{title:'Yield %',range:[71,77],gridcolor:plotGrid},showlegend:true,legend:{x:0,y:1.15,orientation:'h'}}),plotConfig);
+})();
+
+// CHART 12: Opp COGs
+(function(){
+var weeks=['2/15','2/22','3/1','3/8','3/15'];
+var cogs=[55081,46546,40450,37524,12024];
+var colors=cogs.map(c=>c>30000?'#2ecc71':c>15000?'#f39c12':'#e74c3c');
+Plotly.newPlot('chart-opp-cogs',[{x:weeks,y:cogs,type:'bar',marker:{color:colors},text:cogs.map(c=>'$'+c.toLocaleString()),textposition:'outside',textfont:{color:'#e2e4e9',size:11}}],
+Object.assign({},plotLayout,{yaxis:{title:'AR Opp COGs ($)',gridcolor:plotGrid},annotations:[{x:'3/15',y:12024,text:'⚠️ $12K<br>(may be partial week)',showarrow:true,arrowhead:2,ax:0,ay:-40,font:{color:'#f39c12',size:11}}]}),plotConfig);
+})();
+
+// CHART 13: Waterfall
+(function(){
+var cats=['Current PtP','Fix gl_toy','Fix gl_wireless','Fix gl_drugstore','Fix Bottom 4 AAs','Gate gl_music/dvd','Projected PtP'];
+var vals=[1.0232,0.008,0.005,0.004,0.012,0.002,0];
+var running=1.0232;var y=[];var base=[];var colors=[];
+for(var i=0;i<vals.length;i++){
+if(i===0){y.push(vals[i]);base.push(0);colors.push('#4a90e2');}
+else if(i===vals.length-1){var total=1.0232;for(var j=1;j<vals.length-1;j++)total+=vals[j];y.push(total);base.push(0);colors.push('#2ecc71');}
+else{base.push(running);y.push(vals[i]);running+=vals[i];colors.push('#2ecc71');}
+}
+Plotly.newPlot('chart-waterfall',[{x:cats,y:y,base:base,type:'bar',marker:{color:colors},text:cats.map(function(c,i){if(i===0)return'1.0232';if(i===cats.length-1){var t=1.0232;for(var j=1;j<vals.length-1;j++)t+=vals[j];return t.toFixed(4);}return'+'+vals[i].toFixed(3);}),textposition:'outside',textfont:{color:'#e2e4e9',size:11}}],
+Object.assign({},plotLayout,{yaxis:{range:[0.98,1.08],gridcolor:plotGrid},shapes:[{type:'line',x0:-0.5,x1:6.5,y0:1.0,y1:1.0,line:{color:'#e74c3c',width:2,dash:'dash'}}]}),plotConfig);
+})();
+
+// Fullscreen & Export
+document.getElementById('fs-btn').addEventListener('click',function(){
+if(!document.fullscreenElement){document.documentElement.requestFullscreen().catch(e=>console.error(e));}
+else{document.exitFullscreen();}
+});
+document.addEventListener('fullscreenchange',function(){document.getElementById('fs-btn').textContent=document.fullscreenElement?'✕':'⛶';});
+document.getElementById('export-html-btn').addEventListener('click',function(){
+try{var c=document.documentElement.cloneNode(true);var a=c.querySelector('details');if(a)a.remove();var h='<!DOCTYPE html>\n'+c.outerHTML;var b=new Blob([h],{type:'text/html'});var l=document.createElement('a');l.href=URL.createObjectURL(b);l.download='PHX6_AR_Dashboard_'+new Date().toISOString().slice(0,10)+'.html';document.body.appendChild(l);l.click();document.body.removeChild(l);this.innerHTML='✓ Saved!';var btn=this;setTimeout(function(){btn.innerHTML='💾 Export';},2000);}catch(e){alert('Export failed: '+e.message);}
+});
 </script>
 </body>
 </html>
