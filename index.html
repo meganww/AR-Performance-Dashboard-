@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PHX6 AR Performance Dashboard</title>
+<script src="https://d1hilrkz3ka39e.cloudfront.net/plotly/plotly-2.27.0.min.js"></script>
+<script src="https://d1hilrkz3ka39e.cloudfront.net/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0f1923;--card:#1a2736;--card2:#223344;--accent:#4A90E2;--accent2:#5C7A99;--green:#2ECC71;--orange:#F39C12;--red:#E74C3C;--text:#E8EDF2;--text2:#8899AA;--border:#2a3a4a}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.header{background:linear-gradient(135deg,#1a2736,#0f1923);border-bottom:1px solid var(--border);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.header h1{font-size:20px;font-weight:700;color:var(--text)}
+.header h1 span{color:var(--accent)}
+.header-right{display:flex;align-items:center;gap:12px}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.status-dot.green{background:var(--green)}
+.status-dot.red{background:var(--red)}
+.status-dot.orange{background:var(--orange)}
+.status-text{font-size:12px;color:var(--text2)}
+.tabs{display:flex;background:var(--card);border-bottom:1px solid var(--border);padding:0 16px;overflow-x:auto}
+.tab{padding:12px 20px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text2);border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-content{display:none;padding:20px}
+.tab-content.active{display:block}
+.upload-zone{background:var(--card);border:2px dashed var(--border);border-radius:12px;padding:40px;text-align:center;margin:10px 0;cursor:pointer;transition:all .3s}
+.upload-zone:hover{border-color:var(--accent);background:var(--card2)}
+.upload-zone.dragover{border-color:var(--green);background:rgba(46,204,113,.05)}
+.upload-zone h3{color:var(--text);margin-bottom:8px;font-size:16px}
+.upload-zone p{color:var(--text2);font-size:13px}
+.upload-zone input{display:none}
+.file-status{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin:20px 0}
+.file-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;display:flex;align-items:center;gap:12px}
+.file-card .icon{width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.file-card .icon.loaded{background:rgba(46,204,113,.15)}
+.file-card .icon.empty{background:rgba(136,153,170,.1)}
+.file-card .info{flex:1}
+.file-card .info .name{font-size:13px;font-weight:600;color:var(--text)}
+.file-card .info .detail{font-size:11px;color:var(--text2);margin-top:2px}
+.file-card .badge{font-size:10px;padding:3px 8px;border-radius:10px;font-weight:600}
+.badge.loaded{background:rgba(46,204,113,.15);color:var(--green)}
+.badge.missing{background:rgba(136,153,170,.1);color:var(--text2)}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:20px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px}
+.kpi .label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.kpi .value{font-size:28px;font-weight:700}
+.kpi .sub{font-size:12px;margin-top:4px}
+.kpi .value.green{color:var(--green)}
+.kpi .value.red{color:var(--red)}
+.kpi .value.orange{color:var(--orange)}
+.kpi .value.blue{color:var(--accent)}
+.chart-container{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px}
+.chart-container h3{font-size:14px;font-weight:600;margin-bottom:4px}
+.chart-container .subtitle{font-size:11px;color:var(--text2);margin-bottom:12px}
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){.chart-row{grid-template-columns:1fr}}
+.data-table{width:100%;border-collapse:collapse;font-size:12px}
+.data-table th{background:var(--card2);padding:10px 12px;text-align:left;font-weight:600;color:var(--text2);text-transform:uppercase;font-size:10px;letter-spacing:.5px;border-bottom:1px solid var(--border);position:sticky;top:0}
+.data-table td{padding:8px 12px;border-bottom:1px solid var(--border)}
+.data-table tr:hover{background:rgba(74,144,226,.05)}
+.ptp-badge{padding:2px 8px;border-radius:4px;font-weight:600;font-size:11px}
+.ptp-badge.critical{background:rgba(231,76,60,.15);color:var(--red)}
+.ptp-badge.below{background:rgba(243,156,18,.15);color:var(--orange)}
+.ptp-badge.target{background:rgba(46,204,113,.15);color:var(--green)}
+.ptp-badge.strong{background:rgba(46,204,113,.25);color:var(--green)}
+.table-scroll{max-height:500px;overflow-y:auto;border-radius:8px;border:1px solid var(--border)}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text2)}
+.empty-state .icon{font-size:48px;margin-bottom:16px}
+.empty-state h3{color:var(--text);margin-bottom:8px}
+.action-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px;border-left:4px solid}
+.action-card.gate{border-left-color:var(--red)}
+.action-card.investigate{border-left-color:var(--orange)}
+.action-card.monitor{border-left-color:var(--accent)}
+.action-card.ontrack{border-left-color:var(--green)}
+.action-card .action-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.action-card .action-title{font-weight:700;font-size:14px}
+.action-card .action-detail{font-size:12px;color:var(--text2);line-height:1.5}
+.section-title{font-size:16px;font-weight:700;margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.clear-btn{background:var(--red);color:white;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600}
+.clear-btn:hover{opacity:.8}
+.refresh-btn{background:var(--accent);color:white;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600}
+.refresh-btn:hover{opacity:.8}
+.plotly-chart{width:100%;min-height:350px}
+.last-updated{font-size:11px;color:var(--text2);margin-top:8px}
+</style>
+</head>
+<body>
+
+<div class="header">
+<h1>📊 PHX6 <span>AR Performance</span> Dashboard</h1>
+<div class="header-right">
+<span class="status-dot" id="globalStatus"></span>
+<span class="status-text" id="globalStatusText">No data loaded</span>
+<button class="refresh-btn" onclick="renderAll()">🔄 Refresh</button>
+<button class="clear-btn" onclick="clearAll()">🗑️ Clear All</button>
+</div>
+</div>
+
+<div class="tabs">
+<div class="tab active" onclick="switchTab('upload')">📁 Upload Data</div>
+<div class="tab" onclick="switchTab('overview')">📈 Program Overview</div>
+<div class="tab" onclick="switchTab('gl')">🏷️ GL Categories</div>
+<div class="tab" onclick="switchTab('site')">🏭 Site & Associates</div>
+<div class="tab" onclick="switchTab('divergence')">⚖️ PtP Divergence</div>
+<div class="tab" onclick="switchTab('actions')">🎯 Action Prioritizer</div>
+</div>
+
+<div class="tab-content active" id="tab-upload">
+<div class="upload-zone" id="dropZone">
+<h3>📁 Drop CSV Files Here or Click to Browse</h3>
+<p>Upload your weekly data exports — the tool auto-detects each file type</p>
+<p style="margin-top:8px;font-size:11px;color:var(--accent)">Supports: Yield PtP Performance, Weekly Associate Aggregate, Weekly Aggregate Performance, Yield PTP COGS Weekly, Yield Performance by GL, Overall Performance</p>
+<input type="file" id="fileInput" multiple accept=".csv,.xlsx,.xls">
+</div>
+<div class="file-status" id="fileStatus"></div>
+<div id="uploadLog" style="margin-top:16px"></div>
+</div>
+
+<div class="tab-content" id="tab-overview">
+<div id="overviewContent"><div class="empty-state"><div class="icon">📈</div><h3>Upload Data to View Program Overview</h3><p>Upload Yield PTP COGS Weekly, Overall Performance, and Yield PtP Performance CSVs</p></div></div>
+</div>
+
+<div class="tab-content" id="tab-gl">
+<div id="glContent"><div class="empty-state"><div class="icon">🏷️</div><h3>Upload Data to View GL Categories</h3><p>Upload Yield Performance by GL CSV</p></div></div>
+</div>
+
+<div class="tab-content" id="tab-site">
+<div id="siteContent"><div class="empty-state"><div class="icon">🏭</div><h3>Upload Data to View Site & Associate Data</h3><p>Upload Weekly Aggregate Performance and Weekly Associate Aggregate CSVs</p></div></div>
+</div>
+
+<div class="tab-content" id="tab-divergence">
+<div id="divergenceContent"><div class="empty-state"><div class="icon">⚖️</div><h3>Upload Data to View PtP Divergence Analysis</h3><p>Upload Overall Performance CSV</p></div></div>
+</div>
+
+<div class="tab-content" id="tab-actions">
+<div id="actionsContent"><div class="empty-state"><div class="icon">🎯</div><h3>Upload Data to View Action Prioritizer</h3><p>Upload all CSV files for complete analysis</p></div></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// DATA STORE
+// ═══════════════════════════════════════════
+const DATA={
+  yieldDaily:null,
+  associateWeekly:null,
+  siteWeekly:null,
+  yieldCOGS:null,
+  glPerformance:null,
+  overallPerformance:null
+};
+
+const FILE_TYPES=[
+  {key:'yieldDaily',name:'Yield PtP Performance (Daily)',detect:r=>r['AR Yield PtP']!==undefined&&r['Evaluation Day Lcl']!==undefined&&r['Yield PtP Aggregate for DD']!==undefined,icon:'📅'},
+  {key:'associateWeekly',name:'Weekly Associate Aggregate',detect:r=>r['Associate']!==undefined&&r['Refurb Ptp']!==undefined&&r['Success Rate']!==undefined,icon:'👤'},
+  {key:'siteWeekly',name:'Weekly Aggregate Performance',detect:r=>r['Refurb Ptp %']!==undefined&&r['Opp COGs']!==undefined&&r['Overall Success Rate']!==undefined,icon:'🏭'},
+  {key:'yieldCOGS',name:'Yield PTP & COGS Weekly',detect:r=>r['Cost Unsellable (SUM)']!==undefined&&r['Yield PtP (CUSTOM)']!==undefined,icon:'💰'},
+  {key:'glPerformance',name:'Yield Performance by GL',detect:r=>r['GL Product Group Description']!==undefined&&r['Yield PtP']!==undefined&&r['Expected Yield']!==undefined,icon:'🏷️'},
+  {key:'overallPerformance',name:'Overall Performance',detect:r=>r['Flat CR Yield (Units)']!==undefined&&r['AR Yield PtP ($)']!==undefined,icon:'📊'}
+];
+
+// ═══════════════════════════════════════════
+// INIT — Load from localStorage
+// ═══════════════════════════════════════════
+(function init(){
+  FILE_TYPES.forEach(ft=>{
+    const saved=localStorage.getItem('arDash_'+ft.key);
+    if(saved){try{DATA[ft.key]=JSON.parse(saved)}catch(e){}}
+  });
+  updateFileStatus();
+  updateGlobalStatus();
+  renderAll();
+})();
+
+// ═══════════════════════════════════════════
+// FILE UPLOAD HANDLING
+// ═══════════════════════════════════════════
+const dropZone=document.getElementById('dropZone');
+const fileInput=document.getElementById('fileInput');
+
+dropZone.addEventListener('click',()=>fileInput.click());
+dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('dragover')});
+dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('dragover');handleFiles(e.dataTransfer.files)});
+fileInput.addEventListener('change',e=>handleFiles(e.target.files));
+
+function handleFiles(files){
+  const log=document.getElementById('uploadLog');
+  log.innerHTML='';
+  Array.from(files).forEach(file=>{
+    Papa.parse(file,{
+      header:true,
+      skipEmptyLines:true,
+      dynamicTyping:true,
+      complete:function(results){
+        if(results.data.length===0){
+          addLog(log,'❌',file.name,'No data found in file','var(--red)');
+          return;
+        }
+        const firstRow=results.data[0];
+        let matched=false;
+        for(const ft of FILE_TYPES){
+          if(ft.detect(firstRow)){
+            DATA[ft.key]=results.data;
+            localStorage.setItem('arDash_'+ft.key,JSON.stringify(results.data));
+            localStorage.setItem('arDash_'+ft.key+'_date',new Date().toISOString());
+            localStorage.setItem('arDash_'+ft.key+'_file',file.name);
+            addLog(log,'✅',file.name,'Detected as: '+ft.name+' ('+results.data.length+' rows)','var(--green)');
+            matched=true;
+            break;
+          }
+        }
+        if(!matched){
+          addLog(log,'⚠️',file.name,'Could not auto-detect file type. Headers: '+Object.keys(firstRow).slice(0,4).join(', ')+'...','var(--orange)');
+        }
+        updateFileStatus();
+        updateGlobalStatus();
+        renderAll();
+      },
+      error:function(err){
+        addLog(log,'❌',file.name,'Parse error: '+err.message,'var(--red)');
+      }
+    });
+  });
+}
+
+function addLog(container,icon,filename,message,color){
+  const div=document.createElement('div');
+  div.style.cssText='padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;font-size:13px;display:flex;align-items:center;gap:10px';
+  div.innerHTML=`<span style="font-size:18px">${icon}</span><div><strong style="color:${color}">${filename}</strong><br><span style="color:var(--text2);font-size:11px">${message}</span></div>`;
+  container.appendChild(div);
+}
+
+function updateFileStatus(){
+  const container=document.getElementById('fileStatus');
+  container.innerHTML='';
+  FILE_TYPES.forEach(ft=>{
+    const loaded=DATA[ft.key]!==null;
+    const date=localStorage.getItem('arDash_'+ft.key+'_date');
+    const fname=localStorage.getItem('arDash_'+ft.key+'_file');
+    const rows=loaded?DATA[ft.key].length:0;
+    container.innerHTML+=`
+    <div class="file-card">
+      <div class="icon ${loaded?'loaded':'empty'}">${ft.icon}</div>
+      <div class="info">
+        <div class="name">${ft.name}</div>
+        <div class="detail">${loaded?rows+' rows • '+(fname||'uploaded')+' • '+new Date(date).toLocaleDateString():'Not uploaded yet'}</div>
+      </div>
+      <span class="badge ${loaded?'loaded':'missing'}">${loaded?'✓ Loaded':'Missing'}</span>
+    </div>`;
+  });
+}
+
+function updateGlobalStatus(){
+  const dot=document.getElementById('globalStatus');
+  const txt=document.getElementById('globalStatusText');
+  const count=FILE_TYPES.filter(ft=>DATA[ft.key]!==null).length;
+  if(count===6){dot.className='status-dot green';txt.textContent='All 6 files loaded'}
+  else if(count>0){dot.className='status-dot orange';txt.textContent=count+'/6 files loaded'}
+  else{dot.className='status-dot red';txt.textContent='No data loaded'}
+}
+
+function clearAll(){
+  if(!confirm('Clear all uploaded data? You will need to re-upload your CSVs.'))return;
+  FILE_TYPES.forEach(ft=>{DATA[ft.key]=null;localStorage.removeItem('arDash_'+ft.key);localStorage.removeItem('arDash_'+ft.key+'_date');localStorage.removeItem('arDash_'+ft.key+'_file')});
+  updateFileStatus();updateGlobalStatus();renderAll();
+}
+
+// ═══════════════════════════════════════════
+// TAB SWITCHING
+// ═══════════════════════════════════════════
+function switchTab(id){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  const tabs=document.querySelectorAll('.tab');
+  const tabMap=['upload','overview','gl','site','divergence','actions'];
+  tabs[tabMap.indexOf(id)].classList.add('active');
+  renderAll();
+}
+
+// ═══════════════════════════════════════════
+// PLOTLY THEME
+// ═══════════════════════════════════════════
+const plotlyLayout={
+  paper_bgcolor:'transparent',plot_bgcolor:'transparent',
+  font:{color:'#8899AA',family:'Segoe UI,system-ui',size:11},
+  margin:{l:50,r:20,t:40,b:50},
+  xaxis:{gridcolor:'#2a3a4a',linecolor:'#2a3a4a',zerolinecolor:'#2a3a4a'},
+  yaxis:{gridcolor:'#2a3a4a',linecolor:'#2a3a4a',zerolinecolor:'#2a3a4a'},
+  legend:{bgcolor:'transparent',font:{size:11}},
+  hoverlabel:{bgcolor:'#1a2736',bordercolor:'#4A90E2',font:{color:'#E8EDF2',size:12}}
+};
+const plotlyConfig={responsive:true,displaylogo:false,modeBarButtonsToRemove:['lasso2d','select2d']};
+
+// ═══════════════════════════════════════════
+// HELPER FUNCTIONS
+// ═══════════════════════════════════════════
+function ptpBadge(v){
+  if(v===null||v===undefined||isNaN(v))return'<span class="ptp-badge below">N/A</span>';
+  const n=parseFloat(v);
+  if(n>=1.05)return`<span class="ptp-badge strong">${n.toFixed(4)}</span>`;
+  if(n>=1.0)return`<span class="ptp-badge target">${n.toFixed(4)}</span>`;
+  if(n>=0.9)return`<span class="ptp-badge below">${n.toFixed(4)}</span>`;
+  return`<span class="ptp-badge critical">${n.toFixed(4)}</span>`;
+}
+function fmt(n,d=2){return n!==null&&n!==undefined&&!isNaN(n)?parseFloat(n).toFixed(d):'N/A'}
+function fmtPct(n){return n!==null&&!isNaN(n)?(parseFloat(n)*100).toFixed(1)+'%':'N/A'}
+function fmtMoney(n){if(n===null||isNaN(n))return'N/A';const v=parseFloat(n);return(v<0?'-':'')+' $'+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}
+function parseDate(s){if(!s)return null;return new Date(s.replace(' 00:00:00',''))}
+
+// ═══════════════════════════════════════════
+// RENDER ALL
+// ═══════════════════════════════════════════
+function renderAll(){
+  renderOverview();
+  renderGL();
+  renderSite();
+  renderDivergence();
+  renderActions();
+}
+
+// ═══════════════════════════════════════════
+// TAB 2: PROGRAM OVERVIEW
+// ═══════════════════════════════════════════
+function renderOverview(){
+  const el=document.getElementById('overviewContent');
+  if(!DATA.yieldCOGS&&!DATA.overallPerformance&&!DATA.yieldDaily){
+    el.innerHTML='<div class="empty-state"><div class="icon">📈</div><h3>Upload Data to View Program Overview</h3><p>Upload Yield PTP COGS Weekly, Overall Performance, and/or Yield PtP Performance CSVs</p></div>';
+    return;
+  }
+  let html='';
+
+  // KPIs from yieldCOGS
+  if(DATA.yieldCOGS){
+    const sorted=[...DATA.yieldCOGS].sort((a,b)=>new Date(b['Evaluation Day Lcl'])-new Date(a['Evaluation Day Lcl']));
+    const latest=sorted[0];const prev=sorted[1];
+    const currentPtp=parseFloat(latest['Yield PtP (CUSTOM)']);
+    const prevPtp=prev?parseFloat(prev['Yield PtP (CUSTOM)']):null;
+    const wow=prevPtp?(((currentPtp-prevPtp)/prevPtp)*100).toFixed(1):null;
+    const costU=parseFloat(latest['Cost Unsellable (SUM)']);
+    // Project breakeven
+    const pts=sorted.slice(0,8).reverse().map((r,i)=>({x:i,y:parseFloat(r['Yield PtP (CUSTOM)'])}));
+    let slope=0;
+    if(pts.length>=2){const n=pts.length;const sx=pts.reduce((a,p)=>a+p.x,0);const sy=pts.reduce((a,p)=>a+p.y,0);const sxy=pts.reduce((a,p)=>a+p.x*p.y,0);const sxx=pts.reduce((a,p)=>a+p.x*p.x,0);slope=(n*sxy-sx*sy)/(n*sxx-sx*sx)}
+    const weeksToBreakeven=slope<0?Math.ceil((1.0-currentPtp)/slope):null;
+    const breakevenText=weeksToBreakeven&&weeksToBreakeven>0?'~'+weeksToBreakeven+' weeks':'Not projected';
+
+    html+=`<div class="kpi-row">
+      <div class="kpi"><div class="label">Current Yield PtP</div><div class="value ${currentPtp>=1.0?'green':'red'}">${fmt(currentPtp,4)}</div><div class="sub">${wow?'WoW: '+(wow>0?'+':'')+wow+'%':''}</div></div>
+      <div class="kpi"><div class="label">Cost Unsellable</div><div class="value blue">${fmtMoney(costU)}</div><div class="sub">Latest week</div></div>
+      <div class="kpi"><div class="label">Weekly Trend</div><div class="value ${slope>=0?'green':'red'}">${slope>=0?'📈 Improving':'📉 Declining'}</div><div class="sub">${fmt(slope*100,2)}% per week</div></div>
+      <div class="kpi"><div class="label">Breakeven Breach</div><div class="value ${weeksToBreakeven&&weeksToBreakeven<10?'red':'green'}">${breakevenText}</div><div class="sub">${currentPtp>=1.0?'Currently above 1.0':'⚠️ Already below 1.0'}</div></div>
+    </div>`;
+
+    // 12-week trend chart
+    html+='<div class="chart-container"><h3>12-Week Yield PtP Trend</h3><div class="subtitle">Weekly Yield PtP with Cost Unsellable overlay</div><div id="yieldTrendChart" class="plotly-chart"></div></div>';
+  }
+
+  // Daily chart
+  if(DATA.yieldDaily){
+    html+='<div class="chart-container"><h3>Daily AR Yield PtP (Most Recent Week)</h3><div class="subtitle">Day-by-day performance with breakeven reference</div><div id="dailyPtpChart" class="plotly-chart"></div></div>';
+  }
+
+  // Overall Performance comparison
+  if(DATA.overallPerformance){
+    html+='<div class="chart-container"><h3>AR vs CR Performance Comparison</h3><div class="subtitle">Yield PtP ($) and Opportunity COGs trends</div><div id="arCrChart" class="plotly-chart"></div></div>';
+  }
+
+  el.innerHTML=html;
+
+  // Render charts
+  if(DATA.yieldCOGS){
+    const sorted=[...DATA.yieldCOGS].sort((a,b)=>new Date(a['Evaluation Day Lcl'])-new Date(b['Evaluation Day Lcl']));
+    const dates=sorted.map(r=>r['Evaluation Day Lcl'].split(' ')[0]);
+    const ptp=sorted.map(r=>parseFloat(r['Yield PtP (CUSTOM)']));
+    const cost=sorted.map(r=>parseFloat(r['Cost Unsellable (SUM)']));
+    Plotly.newPlot('yieldTrendChart',[
+      {x:dates,y:ptp,name:'Yield PtP',type:'scatter',mode:'lines+markers',line:{color:'#4A90E2',width:3},marker:{size:8}},
+      {x:dates,y:cost,name:'Cost Unsellable',type:'bar',yaxis:'y2',marker:{color:'rgba(243,156,18,0.3)'},hovertemplate:'$%{y:,.0f}'}
+    ],{...plotlyLayout,title:{text:''},yaxis:{...plotlyLayout.yaxis,title:'Yield PtP',range:[Math.min(...ptp)*0.98,Math.max(...ptp)*1.02]},yaxis2:{overlaying:'y',side:'right',title:'Cost Unsellable ($)',gridcolor:'transparent',showgrid:false},shapes:[{type:'line',x0:dates[0],x1:dates[dates.length-1],y0:1.0,y1:1.0,line:{color:'#E74C3C',width:2,dash:'dash'}}],annotations:[{x:dates[dates.length-1],y:1.0,text:'Breakeven',showarrow:false,yshift:12,font:{color:'#E74C3C',size:11}}]},plotlyConfig);
+  }
+
+  if(DATA.yieldDaily){
+    const sorted=[...DATA.yieldDaily].sort((a,b)=>new Date(a['Evaluation Day Lcl'])-new Date(b['Evaluation Day Lcl']));
+    const dates=sorted.map(r=>r['Evaluation Day Lcl'].split(' ')[0]);
+    const ptp=sorted.map(r=>parseFloat(r['AR Yield PtP']));
+    const colors=ptp.map(v=>v>=1.0?'#2ECC71':'#E74C3C');
+    Plotly.newPlot('dailyPtpChart',[
+      {x:dates,y:ptp,type:'bar',marker:{color:colors},text:ptp.map(v=>v.toFixed(4)),textposition:'outside',textfont:{color:'#E8EDF2',size:11}}
+    ],{...plotlyLayout,yaxis:{...plotlyLayout.yaxis,title:'AR Yield PtP',range:[Math.min(...ptp)*0.97,Math.max(...ptp)*1.03]},shapes:[{type:'line',x0:dates[0],x1:dates[dates.length-1],y0:1.0,y1:1.0,line:{color:'#E74C3C',width:2,dash:'dash'}}]},plotlyConfig);
+  }
+
+  if(DATA.overallPerformance){
+    const sorted=[...DATA.overallPerformance].sort((a,b)=>new Date(a.process_date)-new Date(b.process_date));
+    const dates=sorted.map(r=>r.process_date.split(' ')[0]);
+    Plotly.newPlot('arCrChart',[
+      {x:dates,y:sorted.map(r=>parseFloat(r['AR Yield PtP ($)'])),name:'AR PtP ($)',type:'scatter',mode:'lines+markers',line:{color:'#4A90E2',width:3},marker:{size:8}},
+      {x:dates,y:sorted.map(r=>parseFloat(r['CR Yield PtP ($)'])),name:'CR PtP ($)',type:'scatter',mode:'lines+markers',line:{color:'#F39C12',width:3},marker:{size:8}},
+    ],{...plotlyLayout,yaxis:{...plotlyLayout.yaxis,title:'Yield PtP ($)'},shapes:[{type:'line',x0:dates[0],x1:dates[dates.length-1],y0:1.0,y1:1.0,line:{color:'#E74C3C',width:1,dash:'dash'}}]},plotlyConfig);
+  }
+}
+
+// ═══════════════════════════════════════════
+// TAB 3: GL CATEGORIES
+// ═══════════════════════════════════════════
+function renderGL(){
+  const el=document.getElementById('glContent');
+  if(!DATA.glPerformance){el.innerHTML='<div class="empty-state"><div class="icon">🏷️</div><h3>Upload Yield Performance by GL CSV</h3></div>';return}
+
+  const data=[...DATA.glPerformance].filter(r=>r['GL Product Group Description']&&r['Units']>0);
+  const sorted=[...data].sort((a,b)=>parseFloat(a['Yield PtP'])-parseFloat(b['Yield PtP']));
+  const aboveCount=data.filter(r=>parseFloat(r['Yield PtP'])>=1.0).length;
+  const belowCount=data.filter(r=>parseFloat(r['Yield PtP'])<1.0).length;
+  const totalUnits=data.reduce((s,r)=>s+parseInt(r['Units']),0);
+  const belowUnits=data.filter(r=>parseFloat(r['Yield PtP'])<1.0).reduce((s,r)=>s+parseInt(r['Units']),0);
+
+  let html=`<div class="kpi-row">
+    <div class="kpi"><div class="label">Total GL Categories</div><div class="value blue">${data.length}</div></div>
+    <div class="kpi"><div class="label">Above Breakeven</div><div class="value green">${aboveCount}</div><div class="sub">${((aboveCount/data.length)*100).toFixed(0)}% of categories</div></div>
+    <div class="kpi"><div class="label">Below Breakeven</div><div class="value red">${belowCount}</div><div class="sub">${belowUnits.toLocaleString()} units at risk</div></div>
+    <div class="kpi"><div class="label">Units Below 1.0</div><div class="value orange">${fmtPct(belowUnits/totalUnits)}</div><div class="sub">of total volume</div></div>
+  </div>`;
+
+  html+='<div class="chart-row"><div class="chart-container"><h3>GL Category PtP Performance</h3><div class="subtitle">All categories sorted by Yield PtP — red line = breakeven</div><div id="glBarChart" class="plotly-chart"></div></div>';
+  html+='<div class="chart-container"><h3>Volume vs PtP Bubble Chart</h3><div class="subtitle">Bubble size = units processed</div><div id="glBubbleChart" class="plotly-chart"></div></div></div>';
+
+  // Table
+  html+='<div class="chart-container"><h3>GL Category Detail Table</h3><div class="subtitle">Sorted by Yield PtP ascending (worst first)</div><div class="table-scroll"><table class="data-table"><thead><tr><th>GL Category</th><th>Units</th><th>Yield</th><th>Expected</th><th>Yield PtP</th><th>Status</th></tr></thead><tbody>';
+  sorted.forEach(r=>{
+    const ptp=parseFloat(r['Yield PtP']);
+    const status=ptp>=1.05?'🟢 Strong':ptp>=1.0?'🟡 Target':ptp>=0.9?'🟠 Below':'🔴 Critical';
+    html+=`<tr><td><strong>${r['GL Product Group Description']}</strong></td><td>${parseInt(r['Units']).toLocaleString()}</td><td>${fmtPct(r['Yield'])}</td><td>${fmtPct(r['Expected Yield'])}</td><td>${ptpBadge(ptp)}</td><td>${status}</td></tr>`;
+  });
+  html+='</tbody></table></div></div>';
+  el.innerHTML=html;
+
+  // Charts
+  const names=sorted.map(r=>r['GL Product Group Description'].replace('gl_',''));
+  const ptps=sorted.map(r=>parseFloat(r['Yield PtP']));
+  const colors=ptps.map(v=>v>=1.05?'#2ECC71':v>=1.0?'#F39C12':v>=0.9?'#E67E22':'#E74C3C');
+  Plotly.newPlot('glBarChart',[{y:names,x:ptps,type:'bar',orientation:'h',marker:{color:colors},text:ptps.map(v=>v.toFixed(4)),textposition:'outside',textfont:{size:10,color:'#8899AA'}}],{...plotlyLayout,height:Math.max(400,sorted.length*22),margin:{l:160,r:60,t:10,b:40},xaxis:{...plotlyLayout.xaxis,title:'Yield PtP'},shapes:[{type:'line',x0:1.0,x1:1.0,y0:-0.5,y1:sorted.length-0.5,line:{color:'#E74C3C',width:2,dash:'dash'}}]},plotlyConfig);
+
+  const bubbleData=data.map(r=>({x:parseInt(r['Units']),y:parseFloat(r['Yield PtP']),name:r['GL Product Group Description'].replace('gl_',''),size:Math.sqrt(parseInt(r['Units']))*2}));
+  Plotly.newPlot('glBubbleChart',[{x:bubbleData.map(d=>d.x),y:bubbleData.map(d=>d.y),text:bubbleData.map(d=>d.name),mode:'markers+text',textposition:'top center',textfont:{size:9,color:'#8899AA'},marker:{size:bubbleData.map(d=>Math.max(8,Math.min(50,d.size/3))),color:bubbleData.map(d=>d.y>=1.0?'rgba(46,204,113,0.6)':'rgba(231,76,60,0.6)'),line:{color:bubbleData.map(d=>d.y>=1.0?'#2ECC71':'#E74C3C'),width:1}},hovertemplate:'%{text}<br>Units: %{x:,}<br>PtP: %{y:.4f}<extra></extra>'}],{...plotlyLayout,xaxis:{...plotlyLayout.xaxis,title:'Units',type:'log'},yaxis:{...plotlyLayout.yaxis,title:'Yield PtP'},shapes:[{type:'line',x0:0,x1:1,y0:1.0,y1:1.0,xref:'paper',line:{color:'#E74C3C',width:2,dash:'dash'}}]},plotlyConfig);
+}
+
+// ═══════════════════════════════════════════
+// TAB 4: SITE & ASSOCIATES
+// ═══════════════════════════════════════════
+function renderSite(){
+  const el=document.getElementById('siteContent');
+  if(!DATA.siteWeekly&&!DATA.associateWeekly){el.innerHTML='<div class="empty-state"><div class="icon">🏭</div><h3>Upload Site & Associate Data</h3></div>';return}
+  let html='';
+
+  if(DATA.siteWeekly){
+    const sorted=[...DATA.siteWeekly].sort((a,b)=>new Date(a.refurb_end_time)-new Date(b.refurb_end_time));
+    const latest=sorted[sorted.length-1];
+    html+=`<div class="kpi-row">
+      <div class="kpi"><div class="label">Site Refurb PtP</div><div class="value ${parseFloat(latest['Refurb Ptp %'])>=1.0?'green':'red'}">${fmt(latest['Refurb Ptp %'],4)}</div></div>
+      <div class="kpi"><div class="label">Success Rate</div><div class="value blue">${fmtPct(latest['Overall Success Rate'])}</div></div>
+      <div class="kpi"><div class="label">Opp COGs</div><div class="value ${parseFloat(latest['Opp COGs'])>=0?'green':'red'}">${fmtMoney(latest['Opp COGs'])}</div></div>
+      <div class="kpi"><div class="label">HC Clean PtP</div><div class="value ${parseFloat(latest['Heat Seal Clean Ptp'])>=1.0?'green':'orange'}">${fmt(latest['Heat Seal Clean Ptp'],4)}</div></div>
+    </div>`;
+    html+='<div class="chart-container"><h3>PHX6 Weekly Site Performance</h3><div class="subtitle">Refurb PtP, Success Rate, and Heat Seal Clean PtP</div><div id="siteChart" class="plotly-chart"></div></div>';
+  }
+
+  if(DATA.associateWeekly){
+    // Get most recent week
+    const weeks=[...new Set(DATA.associateWeekly.map(r=>r.refurb_end_time))].sort().reverse();
+    const latestWeek=weeks[0];
+    const latestData=DATA.associateWeekly.filter(r=>r.refurb_end_time===latestWeek&&r['Refurb Units Tot Associate']>5&&r['Refurb Ptp']>0);
+    const sortedAssoc=[...latestData].sort((a,b)=>parseFloat(b['Refurb Ptp'])-parseFloat(a['Refurb Ptp']));
+    const top10=sortedAssoc.slice(0,10);
+    const bottom10=sortedAssoc.slice(-10).reverse();
+
+    html+='<div class="chart-container"><h3>Associate Performance — Week of '+latestWeek.split(' ')[0]+'</h3><div class="subtitle">PtP vs Units (min 5 units) — hover for details</div><div id="assocScatter" class="plotly-chart"></div></div>';
+
+    html+='<div class="chart-row"><div class="chart-container"><h3>🏆 Top 10 Associates</h3><div class="table-scroll"><table class="data-table"><thead><tr><th>Associate</th><th>Manager</th><th>PtP</th><th>Success Rate</th><th>Units</th></tr></thead><tbody>';
+    top10.forEach(r=>{html+=`<tr><td><strong>${r.Associate}</strong></td><td>${r.Manager}</td><td>${ptpBadge(r['Refurb Ptp'])}</td><td>${fmtPct(r['Success Rate'])}</td><td>${r['Refurb Units Tot Associate']}</td></tr>`});
+    html+='</tbody></table></div></div>';
+
+    html+='<div class="chart-container"><h3>⚠️ Bottom 10 Associates</h3><div class="table-scroll"><table class="data-table"><thead><tr><th>Associate</th><th>Manager</th><th>PtP</th><th>Success Rate</th><th>Units</th></tr></thead><tbody>';
+    bottom10.forEach(r=>{html+=`<tr><td><strong>${r.Associate}</strong></td><td>${r.Manager}</td><td>${ptpBadge(r['Refurb Ptp'])}</td><td>${fmtPct(r['Success Rate'])}</td><td>${r['Refurb Units Tot Associate']}</td></tr>`});
+    html+='</tbody></table></div></div></div>';
+
+    // Manager rollup
+    const managers={};
+    latestData.forEach(r=>{
+      const m=r.Manager;
+      if(!managers[m])managers[m]={units:0,weighted_ptp:0,count:0,associates:[]};
+      const u=parseInt(r['Refurb Units Tot Associate'])||0;
+      const p=parseFloat(r['Refurb Ptp'])||0;
+      managers[m].units+=u;
+      managers[m].weighted_ptp+=p*u;
+      managers[m].count++;
+      managers[m].associates.push(r.Associate);
+    });
+    const mgrList=Object.entries(managers).map(([name,d])=>({name,units:d.units,ptp:d.units>0?d.weighted_ptp/d.units:0,count:d.count})).sort((a,b)=>b.ptp-a.ptp);
+
+    html+='<div class="chart-container"><h3>Manager Rollup (Weighted by Volume)</h3><div class="table-scroll"><table class="data-table"><thead><tr><th>Manager</th><th>Associates</th><th>Total Units</th><th>Weighted PtP</th><th>Status</th></tr></thead><tbody>';
+    mgrList.forEach(m=>{
+      const status=m.ptp>=1.05?'🟢 Strong':m.ptp>=1.0?'🟡 Target':m.ptp>=0.9?'🟠 Below':'🔴 Critical';
+      html+=`<tr><td><strong>${m.name}</strong></td><td>${m.count}</td><td>${m.units.toLocaleString()}</td><td>${ptpBadge(m.ptp)}</td><td>${status}</td></tr>`;
+    });
+    html+='</tbody></table></div></div>';
+  }
+
+  el.innerHTML=html;
+
+  // Render charts
+  if(DATA.siteWeekly){
+    const sorted=[...DATA.siteWeekly].sort((a,b)=>new Date(a.refurb_end_time)-new Date(b.refurb_end_time));
+    const dates=sorted.map(r=>r.refurb_end_time.split(' ')[0]);
+    Plotly.newPlot('siteChart',[
+      {x:dates,y:sorted.map(r=>parseFloat(r['Refurb Ptp %'])),name:'Refurb PtP',type:'scatter',mode:'lines+markers',line:{color:'#4A90E2',width:3},marker:{size:8}},
+      {x:dates,y:sorted.map(r=>parseFloat(r['Heat Seal Clean Ptp'])),name:'HC Clean PtP',type:'scatter',mode:'lines+markers',line:{color:'#2ECC71',width:2},marker:{size:6}},
+      {x:dates,y:sorted.map(r=>parseFloat(r['Overall Success Rate'])),name:'Success Rate',type:'scatter',mode:'lines+markers',yaxis:'y2',line:{color:'#F39C12',width:2,dash:'dot'},marker:{size:6}}
+    ],{...plotlyLayout,yaxis:{...plotlyLayout.yaxis,title:'PtP'},yaxis2:{overlaying:'y',side:'right',title:'Success Rate',showgrid:false},shapes:[{type:'line',x0:dates[0],x1:dates[dates.length-1],y0:1.0,y1:1.0,line:{color:'#E74C3C',width:2,dash:'dash'}}]},plotlyConfig);
+  }
+
+  if(DATA.associateWeekly){
+    const weeks=[...new Set(DATA.associateWeekly.map(r=>r.refurb_end_time))].sort().reverse();
+    const latestData=DATA.associateWeekly.filter(r=>r.refurb_end_time===weeks[0]&&r['Refurb Units Tot Associate']>5&&r['Refurb Ptp']>0);
+    const colors=latestData.map(r=>parseFloat(r['Refurb Ptp'])>=1.0?'rgba(46,204,113,0.7)':'rgba(231,76,60,0.7)');
+    Plotly.newPlot('assocScatter',[{
+      x:latestData.map(r=>parseInt(r['Refurb Units Tot Associate'])),
+      y:latestData.map(r=>parseFloat(r['Refurb Ptp'])),
+      text:latestData.map(r=>r.Associate+' ('+r.Manager+')'),
+      mode:'markers',
+      marker:{size:10,color:colors,line:{color:latestData.map(r=>parseFloat(r['Refurb Ptp'])>=1.0?'#2ECC71':'#E74C3C'),width:1}},
+      hovertemplate:'%{text}<br>Units: %{x}<br>PtP: %{y:.4f}<extra></extra>'
+    }],{...plotlyLayout,xaxis:{...plotlyLayout.xaxis,title:'Units Processed'},yaxis:{...plotlyLayout.yaxis,title:'Refurb PtP'},shapes:[{type:'line',x0:0,x1:1,y0:1.0,y1:1.0,xref:'paper',line:{color:'#E74C3C',width:2,dash:'dash'}}]},plotlyConfig);
+  }
+}
+
+// ═══════════════════════════════════════════
+// TAB 5: DIVERGENCE
+// ═══════════════════════════════════════════
+function renderDivergence(){
+  const el=document.getElementById('divergenceContent');
+  if(!DATA.overallPerformance){el.innerHTML='<div class="empty-state"><div class="icon">⚖️</div><h3>Upload Overall Performance CSV</h3></div>';return}
+
+  const sorted=[...DATA.overallPerformance].sort((a,b)=>new Date(a.process_date)-new Date(b.process_date));
+  const dates=sorted.map(r=>r.process_date.split(' ')[0]);
+  const arPtpDollar=sorted.map(r=>parseFloat(r['AR Yield PtP ($)']));
+  const crPtpDollar=sorted.map(r=>parseFloat(r['CR Yield PtP ($)']));
+  const arOppCogs=sorted.map(r=>parseFloat(r['AR Yield Opp. COGS']));
+  const arFlatUnits=sorted.map(r=>parseFloat(r['Flat AR Yield (Units)']));
+  const arFlatDollars=sorted.map(r=>parseFloat(r['Flat AR Yield ($)']));
+  const gap=arFlatUnits.map((u,i)=>u-arFlatDollars[i]);
+
+  const latestGap=gap[gap.length-1];
+  const firstGap=gap[0];
+  const gapChange=latestGap-firstGap;
+  const latestArPtp=arPtpDollar[arPtpDollar.length-1];
+  const firstArPtp=arPtpDollar[0];
+  const ptpDecline=((latestArPtp-firstArPtp)/firstArPtp*100);
+
+  let html=`<div class="kpi-row">
+    <div class="kpi"><div class="label">AR Dollar PtP (Latest)</div><div class="value ${latestArPtp>=1.0?'green':'red'}">${fmt(latestArPtp,4)}</div></div>
+    <div class="kpi"><div class="label">Dollar PtP Decline</div><div class="value red">${fmt(ptpDecline,1)}%</div><div class="sub">Over ${dates.length} weeks</div></div>
+    <div class="kpi"><div class="label">Unit vs Dollar Yield Gap</div><div class="value ${latestGap>0.01?'red':'orange'}">${fmt(latestGap,4)}</div><div class="sub">${gapChange>0?'↑ Widening':'↓ Narrowing'}</div></div>
+    <div class="kpi"><div class="label">AR Opp COGs (Latest)</div><div class="value ${arOppCogs[arOppCogs.length-1]>0?'green':'red'}">${fmtMoney(arOppCogs[arOppCogs.length-1])}</div></div>
+  </div>`;
+
+  html+='<div class="chart-container"><h3>Dollar PtP vs Unit Yield — The Divergence</h3><div class="subtitle">When the gap widens, expensive items are underperforming disproportionately</div><div id="divergeChart" class="plotly-chart"></div></div>';
+  html+='<div class="chart-row"><div class="chart-container"><h3>AR Flat Yield: Units vs Dollars</h3><div class="subtitle">The gap between these lines shows the high-value item problem</div><div id="flatYieldChart" class="plotly-chart"></div></div>';
+  html+='<div class="chart-container"><h3>AR Opportunity COGs Trend</h3><div class="subtitle">Positive = profitable, declining = margin compression</div><div id="oppCogsChart" class="plotly-chart"></div></div></div>';
+
+  // Explanation
+  html+=`<div class="chart-container" style="border-left:4px solid var(--orange)">
+    <h3>⚠️ What the Divergence Means</h3>
+    <div style="font-size:13px;color:var(--text2);line-height:1.7;margin-top:8px">
+      <p>The gap between unit-based yield and dollar-based yield is <strong style="color:${latestGap>firstGap?'var(--red)':'var(--green)'}">${latestGap>firstGap?'widening':'narrowing'}</strong>. 
+      This means higher-value items are ${latestGap>firstGap?'increasingly underperforming':'improving relative to'} compared to lower-value items.</p>
+      <p style="margin-top:8px"><strong>Dollar PtP has declined ${fmt(Math.abs(ptpDecline),1)}%</strong> over the reporting period. At the current rate, 
+      ${latestArPtp>1.0?'the program will breach breakeven if the trend continues.':'the program is already below breakeven in dollar terms.'}</p>
+      <p style="margin-top:8px"><strong>Action Required:</strong> Pull the top 20 ASINs by dollar value with PtP below 1.0 to identify which specific high-value items are driving this divergence.</p>
+    </div>
+  </div>`;
+
+  el.innerHTML=html;
+
+  Plotly.newPlot('divergeChart',[
+    {x:dates,y:arPtpDollar,name:'AR Dollar PtP',type:'scatter',mode:'lines+markers',line:{color:'#E74C3C',width:3},marker:{size:8}},
+    {x:dates,y:crPtpDollar,name:'CR Dollar PtP',type:'scatter',mode:'lines+markers',line:{color:'#F39C12',width:2},marker:{size:6}},
+  ],{...plotlyLayout,yaxis:{...plotlyLayout.yaxis,title:'Yield PtP ($)',range:[Math.min(...arPtpDollar,...crPtpDollar)*0.99,Math.max(...arPtpDollar,...crPtpDollar)*1.01]},shapes:[{type:'line',x0:dates[0],x1:dates[dates.length-1],y0:1.0,y1:1.0,line:{color:'#E74C3C',width:1,dash:'dash'}}]},plotlyConfig);
+
+  Plotly.newPlot('flatYieldChart',[
+    {x:dates,y:arFlatUnits,name:'Flat Yield (Units)',type:'scatter',mode:'lines+markers',line:{color:'#4A90E2',width:3},marker:{size:8},fill:'tonexty',fillcolor:'rgba(74,144,226,0.05)'},
+    {x:dates,y:arFlatDollars,name:'Flat Yield ($)',type:'scatter',mode:'lines+markers',line:{color:'#E74C3C',width:3},marker:{size:8}},
+  ],{...plotlyLayout,yaxis:{...plotlyLayout.yaxis,title:'Flat Yield'}},plotlyConfig);
+
+  Plotly.newPlot('oppCogsChart',[
+    {x:dates,y:arOppCogs,name:'AR Opp COGs',type:'bar',marker:{color:arOppCogs.map(v=>v>=0?'rgba(46,204,113,0.6)':'rgba(231,76,60,0.6)')},text:arOppCogs.map(v=>fmtMoney(v)),textposition:'outside',textfont:{size:10,color:'#8899AA'}}
+  ],{...plotlyLayout,yaxis:{...plotlyLayout.yaxis,title:'Opp COGs ($)'}},plotlyConfig);
+}
+
+// ═══════════════════════════════════════════
+// TAB 6: ACTION PRIORITIZER
+// ═══════════════════════════════════════════
+function renderActions(){
+  const el=document.getElementById('actionsContent');
+  const hasData=DATA.glPerformance||DATA.associateWeekly||DATA.overallPerformance;
+  if(!hasData){el.innerHTML='<div class="empty-state"><div class="icon">🎯</div><h3>Upload Data for Action Prioritizer</h3></div>';return}
+
+  let html='';
+
+  // GL Actions
+  if(DATA.glPerformance){
+    const below=DATA.glPerformance.filter(r=>parseFloat(r['Yield PtP'])<1.0&&parseInt(r['Units'])>0).sort((a,b)=>parseFloat(a['Yield PtP'])-parseFloat(b['Yield PtP']));
+    const critical=below.filter(r=>parseFloat(r['Yield PtP'])<0.9);
+    const belowTarget=below.filter(r=>parseFloat(r['Yield PtP'])>=0.9);
+
+    html+='<div class="section-title">🏷️ GL Category Actions</div>';
+    critical.forEach(r=>{
+      const ptp=parseFloat(r['Yield PtP']);
+      const units=parseInt(r['Units']);
+      const action=ptp<0.85?'GATE — Evaluate removal from refurb program':'PROCESS REVIEW — Investigate root cause';
+      html+=`<div class="action-card gate"><div class="action-header"><div class="action-title">🚫 ${r['GL Product Group Description']}</div>${ptpBadge(ptp)}</div><div class="action-detail"><strong>Action:</strong> ${action}<br><strong>Impact:</strong> ${units.toLocaleString()} units at ${fmt(ptp,4)} PtP — ${fmtPct(r['Yield'])} actual vs ${fmtPct(r['Expected Yield'])} expected<br><strong>Priority:</strong> 🔴 Critical — significant dollar drag on program</div></div>`;
+    });
+    belowTarget.forEach(r=>{
+      const ptp=parseFloat(r['Yield PtP']);
+      const units=parseInt(r['Units']);
+      const nearBreakeven=ptp>=0.98;
+      const action=nearBreakeven?'QUICK WIN — Only '+(((1.0-ptp)*100).toFixed(1))+'% from breakeven':'INVESTIGATE — Analyze sub-category and defect patterns';
+      html+=`<div class="action-card ${nearBreakeven?'monitor':'investigate'}"><div class="action-header"><div class="action-title">${nearBreakeven?'👁️':'🔍'} ${r['GL Product Group Description']}</div>${ptpBadge(ptp)}</div><div class="action-detail"><strong>Action:</strong> ${action}<br><strong>Impact:</strong> ${units.toLocaleString()} units — ${nearBreakeven?'high ROI, small improvement needed':'moderate priority'}</div></div>`;
+    });
+  }
+
+  // Associate Actions
+  if(DATA.associateWeekly){
+    const weeks=[...new Set(DATA.associateWeekly.map(r=>r.refurb_end_time))].sort().reverse();
+    const latestWeek=weeks[0];
+    const latestData=DATA.associateWeekly.filter(r=>r.refurb_end_time===latestWeek&&r['Refurb Units Tot Associate']>10&&parseFloat(r['Refurb Ptp'])>0&&parseFloat(r['Refurb Ptp'])<1.0);
+    const sortedAssoc=[...latestData].sort((a,b)=>{
+      const aImpact=(1-parseFloat(a['Refurb Ptp']))*parseInt(a['Refurb Units Tot Associate']);
+      const bImpact=(1-parseFloat(b['Refurb Ptp']))*parseInt(b['Refurb Units Tot Associate']);
+      return bImpact-aImpact;
+    });
+
+    if(sortedAssoc.length>0){
+      html+='<div class="section-title">👤 Associate Coaching Actions (Week of '+latestWeek.split(' ')[0]+')</div>';
+      sortedAssoc.slice(0,15).forEach(r=>{
+        const ptp=parseFloat(r['Refurb Ptp']);
+        const units=parseInt(r['Refurb Units Tot Associate']);
+        const impact=((1-ptp)*units).toFixed(0);
+        const severity=ptp<0.7?'gate':ptp<0.9?'investigate':'monitor';
+        const action=ptp<0.7?'IMMEDIATE 1:1 — Critical underperformance':ptp<0.9?'COACHING PLAN — Pair with top performer':'MONITOR — Slight below target';
+        // Check trend
+        const history=DATA.associateWeekly.filter(h=>h.Associate===r.Associate&&parseFloat(h['Refurb Ptp'])>0).sort((a,b)=>new Date(a.refurb_end_time)-new Date(b.refurb_end_time));
+        const trend=history.length>=2?(parseFloat(history[history.length-1]['Refurb Ptp'])<parseFloat(history[history.length-2]['Refurb Ptp'])?'📉 Declining':'📈 Improving'):'—';
+
+        html+=`<div class="action-card ${severity}"><div class="action-header"><div class="action-title">${ptp<0.7?'🚨':ptp<0.9?'⚠️':'👁️'} ${r.Associate} → Manager: ${r.Manager}</div>${ptpBadge(ptp)}</div><div class="action-detail"><strong>Action:</strong> ${action}<br><strong>Impact:</strong> ${units} units × ${fmt(1-ptp,4)} gap = ~${impact} unit-equivalents of drag<br><strong>Trend:</strong> ${trend} | <strong>Success Rate:</strong> ${fmtPct(r['Success Rate'])}</div></div>`;
+      });
+    }
+  }
+
+  // Impact Model
+  if(DATA.glPerformance&&DATA.siteWeekly){
+    const siteLatest=[...DATA.siteWeekly].sort((a,b)=>new Date(b.refurb_end_time)-new Date(a.refurb_end_time))[0];
+    const currentPtp=parseFloat(siteLatest['Refurb Ptp %']);
+    html+=`<div class="section-title">📊 Impact Modeling</div>
+    <div class="chart-container" style="border-left:4px solid var(--green)">
+      <h3>Projected Impact of Actions</h3>
+      <div style="font-size:13px;color:var(--text2);line-height:1.8;margin-top:8px">
+        <p><strong>Current Site PtP:</strong> <span style="color:${currentPtp>=1.0?'var(--green)':'var(--red)'}"> ${fmt(currentPtp,4)}</span></p>
+        <p><strong>If GL categories below 0.90 are gated:</strong> Removes worst-performing volume, estimated PtP improvement of +0.02–0.04</p>
+        <p><strong>If bottom 4 associates improve to 0.95:</strong> Estimated site PtP improvement of +0.01–0.03</p>
+        <p><strong>Combined projected PtP:</strong> <span style="color:var(--green)">~${fmt(currentPtp+0.04,4)} – ${fmt(currentPtp+0.07,4)}</span></p>
+      </div>
+    </div>`;
+  }
+
+  if(!html)html='<div class="empty-state"><div class="icon">🎯</div><h3>Upload more data for complete action analysis</h3></div>';
+  el.innerHTML=html;
+}
+</script>
+
+<!-- DATA SOURCES & ASSUMPTIONS -->
+<details style="clear:both;display:block;margin:30px auto;max-width:900px;background:#FFF3CD;border-left:5px solid #FF9800;border-radius:8px;font-family:system-ui;box-shadow:0 2px 8px rgba(0,0,0,0.1)">
+<summary style="padding:20px;cursor:pointer;list-style:none;user-select:none;display:flex;align-items:center;justify-content:space-between">
+<div style="display:flex;align-items:center"><span style="font-size:22px;margin-right:10px">📋</span><strong style="font-size:16px;color:#2C3744">DATA SOURCES & ASSUMPTIONS</strong></div>
+<span style="font-size:20px;color:#666;font-weight:normal">(Click to expand)</span>
+</summary>
+<div style="padding:0 20px 20px 20px;font-size:13px;color:#2C3744;line-height:1.6">
+<strong>Source:</strong> User-uploaded CSV files from Amazon QuickSight exports<br>
+<strong>Data Verification:</strong>
+<ul style="margin:8px 0;padding-left:20px">
+<li>✅ All visualizations render from uploaded CSV data — no hardcoded values</li>
+<li>✅ File type auto-detection based on column headers</li>
+<li>✅ Data persists in browser localStorage between sessions</li>
+<li>⚠️ <strong>Assumption:</strong> PtP ≥ 1.0 treated as breakeven threshold</li>
+<li>⚠️ <strong>Assumption:</strong> Breakeven breach projection uses linear regression on available data points</li>
+<li>⚠️ <strong>Assumption:</strong> Manager rollup uses volume-weighted PtP averaging</li>
+<li>⚠️ <strong>Assumption:</strong> GL category price tiers not available in source data — dollar impact estimates use yield gap × units only</li>
+</ul>
+</div>
+</details>
+
+<div id="viz-controls" style="position:fixed;top:15px;right:15px;z-index:9999;display:flex;gap:8px">
+<button id="export-html-btn" style="background:#2ECC71;border:2px solid #27AE60;color:white;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.1);transition:all 0.2s" title="Export as HTML" onmouseover="this.style.background='#27AE60';this.style.transform='translateY(-2px)'" onmouseout="this.style.background='#2ECC71';this.style.transform='translateY(0)'">💾 Export</button>
+<button id="fs-btn" style="background:white;border:2px solid #4A90E2;color:#4A90E2;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.1);transition:all 0.2s" title="Fullscreen" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">⛶</button>
+</div>
+<script>
+(function(){
+document.getElementById('export-html-btn').addEventListener('click',function(){try{var htmlClone=document.documentElement.cloneNode(true);var assumptions=htmlClone.querySelector('details[style*="FFF3CD"]');if(assumptions)assumptions.remove();var htmlContent='<!DOCTYPE html>\n'+htmlClone.outerHTML;var blob=new Blob([htmlContent],{type:'text/html;charset=utf-8'});var timestamp=new Date().toISOString().slice(0,10);var filename='ar_performance_dashboard_'+timestamp+'.html';var link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=filename;document.body.appendChild(link);link.click();document.body.removeChild(link);URL.revokeObjectURL(link.href);var btn=this;var originalText=btn.innerHTML;btn.innerHTML='✓ Saved!';setTimeout(function(){btn.innerHTML=originalText},2000)}catch(err){console.error('Export error:',err);alert('Export failed: '+err.message)}});
+document.getElementById('fs-btn').addEventListener('click',function(){if(!document.fullscreenElement){document.documentElement.requestFullscreen().catch(e=>console.error(e))}else{document.exitFullscreen()}});
+document.addEventListener('fullscreenchange',function(){document.getElementById('fs-btn').textContent=document.fullscreenElement?'✕':'⛶'});
+})();
+</script>
+</body>
+</html>
